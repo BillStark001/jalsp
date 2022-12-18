@@ -1,0 +1,132 @@
+import { IEquatable } from "../utils/equatable";
+import { eps, GSymbol } from "./symbol";
+
+
+export class Production {
+
+  head: GSymbol;
+  body: GSymbol[];
+  dot: number;
+  items?: GItem[];
+
+  constructor(head: GSymbol, body: GSymbol[]) {
+    this.head = head;
+    this.body = body;
+    this.dot = -1;
+  }
+
+  toString(dot?: number) {
+    var str = [];
+
+    str.push(this.head.toString());
+    str.push(' ::= ');
+    for (var i = 0; i < this.body.length; i++) {
+      if (i === dot) str.push('. ');
+      str.push(this.body[i].toString());
+      str.push(' ');
+    }
+    return str.join('').trim();
+  }
+
+  getItems() {
+
+    if (this.items === undefined) {
+      var self = this;
+      self.items = Array.from(Array(self.body.length + 1).keys()).map(function (i) {
+        return new GItem(self, i);
+      });
+    }
+    return this.items!;
+  }
+
+}
+
+
+export class GItem implements IEquatable {
+
+  production: Production;
+  dot: number;
+
+  constructor(prod: Production, dot: number) {
+    this.production = prod;
+    this.dot = dot;
+  }
+
+
+
+  toString() {
+    return this.production.toString(this.dot);
+  };
+
+  isAtStart() {
+    return this.dot === 0;
+  };
+
+  isAtEnd() {
+    return this.dot >= this.production.body.length;
+  };
+
+  symbolAhead() {
+    return this.production.body[this.dot];
+  };
+
+  tail() {
+    return this.production.body.slice(this.dot + 1, this.production.body.length);
+  };
+
+  nextItem() {
+    return this.production.getItems()[this.dot + 1];
+  };
+
+  equals(other: GItem) {
+
+    return other.production === this.production && other.dot === this.dot;
+  };
+
+}
+
+export class LR1Item implements IEquatable {
+  item: GItem;
+  lookahead: GSymbol;
+
+  constructor(item: GItem, lookahead: GSymbol) {
+    this.item = item;
+    this.lookahead = lookahead;
+  }
+
+  toString() {
+    return '[' + this.item.toString() + ', ' + this.lookahead.toString() + ']';
+  }
+
+  equals(other: any) {
+    return this.item.equals(other.item) && this.lookahead === other.lookahead;
+  }
+
+}
+/*
+export class LRRuleBook extends NDRuleBook<GSymbol> {
+
+  constructor(rules: Rule<GSymbol>[]) {
+    super(rules);
+  }
+
+  getSymbols(): GSymbol[] {
+    var symbols: GSymbol[] = [];
+    this.rules
+      .filter(function (rule) {
+        return ((rule.input !== eps)  && !(rule.input.negate));
+      })
+      .map(function (rule) {
+        return rule.input as unknown as GSymbol;
+      })
+      .forEach(function (i) {
+        if (!symbols.filter(s => s.match(i))) {
+          symbols.push(i);
+        }
+      });
+
+    return symbols;
+  }
+
+}
+*/

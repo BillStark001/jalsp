@@ -80,7 +80,6 @@ typings/
 
 # Nuxt.js build / generate output
 .nuxt
-dist
 
 # Gatsby files
 .cache/
@@ -102,3 +101,16 @@ dist
 
 # TernJS port file
 .tern-port
+
+# dotenv environment variable files
+.env
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local
+
+
+# dist/
+.vscode/
+
+**/.DS_Store
