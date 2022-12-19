@@ -29,7 +29,7 @@ function printActionTable(action) {
 exports.printActionTable = printActionTable;
 class LRGenerator {
     constructor(grammar) {
-        var _a;
+        var _a, _b;
         this.first = {};
         this.follow = {};
         this.S1 = symbol_1.eps;
@@ -49,7 +49,7 @@ class LRGenerator {
         this.symbols = [];
         this.symbolsTable = {};
         // determine eof
-        this.EOF = new symbol_1.T(grammar.eofToken || '<<EOF>>');
+        this.EOF = new symbol_1.T((_a = grammar.eofToken) !== null && _a !== void 0 ? _a : '<<EOF>>');
         this.symbols.push(this.EOF);
         this.symbolsTable[this.EOF.toString()] = EOF_INDEX;
         this.terminals.push(this.EOF);
@@ -68,7 +68,7 @@ class LRGenerator {
             this.symbols[this.symbolsTable[grammar.startSymbol]] :
             this.productions[0].head;
         this.computeFirstAndFollow();
-        var mode = (_a = grammar.mode) === null || _a === void 0 ? void 0 : _a.toUpperCase();
+        var mode = (_b = grammar.mode) === null || _b === void 0 ? void 0 : _b.toUpperCase();
         if (mode === 'LALR1') {
             this.computeLR1(true);
         }
@@ -110,8 +110,9 @@ class LRGenerator {
         const selfProductions = this.productions;
         const selfActions = this.actions;
         unparsed.forEach(function (production) {
-            const head = production[0] || '[E]';
-            const body = production[1] || [];
+            var _a, _b;
+            const head = (_a = production[0]) !== null && _a !== void 0 ? _a : '[E]';
+            const body = (_b = production[1]) !== null && _b !== void 0 ? _b : [];
             const action = production[2];
             var p = new instrument_1.Production(self.addGrammarElement(head), body.map(function (element) { return self.addGrammarElement(element); }));
             selfProductions.push(p);
@@ -137,6 +138,7 @@ class LRGenerator {
     }
     //Computes FIRST and FOLLOW sets
     computeFirstAndFollow() {
+        var _a;
         const self = this;
         var first = {};
         var nullable = {};
@@ -149,10 +151,11 @@ class LRGenerator {
         do {
             done = false;
             self.productions.forEach(function (p) {
+                var _a, _b;
                 const lhs = p.head;
                 const rhs = p.body;
                 const lhss = lhs.toString();
-                first[lhss] = first[lhss] || new Set();
+                first[lhss] = (_a = first[lhss]) !== null && _a !== void 0 ? _a : new Set();
                 if (rhs.length == 0) {
                     done = first[lhss].add2(symbol_1.eps) || done;
                     nullable[lhss] = true;
@@ -162,7 +165,7 @@ class LRGenerator {
                     for (i = 0; i < rhs.length; i++) {
                         var e = rhs[i];
                         var es = e.toString();
-                        first[es] = first[es] || new Set();
+                        first[es] = (_b = first[es]) !== null && _b !== void 0 ? _b : new Set();
                         var fwe = new Set(first[es]);
                         fwe.delete(symbol_1.eps);
                         // add elements
@@ -181,18 +184,19 @@ class LRGenerator {
         self.first = first;
         //compute FOLLOW
         const startStr = self.start.toString();
-        follow[startStr] = follow[startStr] || new Set();
+        follow[startStr] = (_a = follow[startStr]) !== null && _a !== void 0 ? _a : new Set();
         follow[startStr].add(self.EOF);
         do {
             done = false;
             self.productions.forEach(function (p) {
+                var _a, _b, _c;
                 const rhs = p.body;
                 const lhs = p.head;
                 const lhss = lhs.toString();
                 for (var i = 0; i < rhs.length; i++) {
                     const rhsis = rhs[i].toString();
                     if ((0, symbol_1.isNonTerminal)(rhs[i])) {
-                        follow[rhsis] = follow[rhsis] || new Set();
+                        follow[rhsis] = (_a = follow[rhsis]) !== null && _a !== void 0 ? _a : new Set();
                         if (i < rhs.length - 1) {
                             //BUG: here we need to compute first(rhs[i+1]...rhs[n])
                             var tail = rhs.slice(i + 1);
@@ -201,12 +205,12 @@ class LRGenerator {
                             var epsfound = f.delete(symbol_1.eps);
                             done = follow[rhsis].addSet2(f) || done;
                             if (epsfound) {
-                                follow[lhss] = follow[lhss] || new Set();
+                                follow[lhss] = (_b = follow[lhss]) !== null && _b !== void 0 ? _b : new Set();
                                 done = follow[rhsis].addSet2(follow[lhss]) || done;
                             }
                         }
                         else {
-                            follow[lhss] = follow[lhss] || new Set();
+                            follow[lhss] = (_c = follow[lhss]) !== null && _c !== void 0 ? _c : new Set();
                             done = follow[rhsis].addSet2(follow[lhss]) || done;
                         }
                     }
@@ -321,6 +325,7 @@ class LRGenerator {
         return this.closureLR1(j);
     }
     computeSLR() {
+        var _a;
         const self = this;
         self.determineS1();
         var states = [];
@@ -335,8 +340,9 @@ class LRGenerator {
         while (i < states.length) {
             // take the Ii state to process at the top of the stack
             var Ii = states[i];
-            var act = (self.action[i] = self.action[i] || {});
+            var act = (self.action[i] = (_a = self.action[i]) !== null && _a !== void 0 ? _a : {});
             Ii.forEach(function (gitem) {
+                var _a;
                 //per ogni item
                 if (gitem.isAtEnd()) {
                     // if A is not S',  add ACTION(i, a) = reduce (A -> X)
@@ -372,7 +378,7 @@ class LRGenerator {
                     var an = self.symbolsTable[a.name];
                     if ((0, symbol_1.isNonTerminal)(a)) {
                         // add to table GOTO(i, X) = j
-                        (self.goto[i] = self.goto[i] || {})[an] = j;
+                        (self.goto[i] = (_a = self.goto[i]) !== null && _a !== void 0 ? _a : {})[an] = j;
                     }
                     else {
                         // add to ACTION(i, X) = shift j
@@ -387,6 +393,7 @@ class LRGenerator {
         self.startState = 0;
     }
     computeLR1(lalr1) {
+        var _a;
         const self = this;
         self.determineS1();
         var states = [];
@@ -401,8 +408,9 @@ class LRGenerator {
         while (i < states.length) {
             // take the Ii state to process at the top of the stack
             var Ii = states[i];
-            var act = (self.action[i] = self.action[i] || {});
+            var act = (self.action[i] = (_a = self.action[i]) !== null && _a !== void 0 ? _a : {});
             Ii.forEach(function (lr1item) {
+                var _a;
                 // for each LR1item
                 var gitem = lr1item.item;
                 var lookahead = lr1item.lookahead;
@@ -438,7 +446,7 @@ class LRGenerator {
                     var an = self.symbolsTable[a.name];
                     if ((0, symbol_1.isNonTerminal)(a)) {
                         // add to table GOTO(i, X) = j
-                        (self.goto[i] = self.goto[i] || {})[an] = j;
+                        (self.goto[i] = (_a = self.goto[i]) !== null && _a !== void 0 ? _a : {})[an] = j;
                     }
                     else {
                         // add to ACTION(i, X) = shift j
@@ -503,6 +511,7 @@ class LRGenerator {
     mergeStates(j, state, other) {
         const self = this;
         state.forEach(function (lr1item) {
+            var _a;
             if (lr1item.item.isAtEnd()) {
                 var otherLR1item = other.filter(function (oLR1item) {
                     return oLR1item.item.equals(lr1item.item);
@@ -512,7 +521,7 @@ class LRGenerator {
                 var p = gitem.production;
                 var lookahead = otherLR1item.lookahead;
                 var pindex = self.productions.indexOf(p);
-                var act = (self.action[j] = self.action[j] || {});
+                var act = (self.action[j] = (_a = self.action[j]) !== null && _a !== void 0 ? _a : {});
                 if (!p.head.equals(self.S1)) {
                     var newAction = ['reduce', [self.symbolsTable[gitem.production.head.name], gitem.production.body.length, pindex]];
                     self.tryAddAction(act, gitem, lookahead, newAction);
@@ -525,8 +534,9 @@ class LRGenerator {
         });
     }
     tryAddAction(act, gitem, lookahead, newAction) {
+        var _a;
         const self = this;
-        var an = self.symbolsTable[lookahead.toString()] || 0;
+        var an = (_a = self.symbolsTable[lookahead.toString()]) !== null && _a !== void 0 ? _a : 0;
         // console.log(`tryAddAction ${lookahead} ${JSON.stringify(act)} ${an}`);
         if (act[an] === undefined) {
             act[an] = newAction;

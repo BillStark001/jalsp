@@ -9,8 +9,8 @@ const generator_1 = __importDefault(require("../parser/generator"));
 const parser_1 = __importDefault(require("../parser/parser"));
 var ebnf = new builder_1.default()
     // .bnf('combine = ', (x) => x?.length)
-    .bnf('ident = IDENTIFIER | STRING1 | STRING2', (x) => x || '[E]')
-    .bnf('number = NON_NEG_INTEGER', (x) => x || 0)
+    .bnf('ident = IDENTIFIER | STRING1 | STRING2', (x) => x !== null && x !== void 0 ? x : '[E]')
+    .bnf('number = NON_NEG_INTEGER', (x) => x !== null && x !== void 0 ? x : 0)
     .bnf('elem = ident', (x) => x)
     .bnf('group = elem', (x) => [x])
     .bnf('group = elem group', (x, y) => [x].concat(y))
@@ -23,6 +23,7 @@ var ebnf = new builder_1.default()
     return ret;
 })
     .bnf('elem = group MULT number', (g, s, n) => {
+    var _a;
     if (typeof (g) == 'string')
         return {
             isEbnf: true,
@@ -38,7 +39,7 @@ var ebnf = new builder_1.default()
             mult: n
         };
     else {
-        g.mult = g.mult || 1;
+        g.mult = (_a = g.mult) !== null && _a !== void 0 ? _a : 1;
         g.mult *= n;
         return g;
     }

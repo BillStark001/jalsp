@@ -42,7 +42,7 @@ var res = (0, _1.parseEbnf)(tokens);
 // console.log(res);
 // console.log(JSON.stringify(res));
 var res2 = (0, _1.convertToBnf)(res);
-// res2.forEach(x => console.log(x));
+res2.forEach(x => console.log(x));
 var weirdLex = J.newLexer()
     .t(() => undefined, / +/)
     .t((v, l) => l, /[\+\-\*\/]/)

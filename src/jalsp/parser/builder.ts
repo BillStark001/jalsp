@@ -49,7 +49,7 @@ export default class LRGrammarBuilder {
 
     for (var p of prods as SimpleProduction[]) {
       const sign = JSON.stringify([p[0], p[1]]);
-      const handlerInUse = handler || p[2];
+      const handlerInUse = handler ?? p[2];
       if (this.prodCache.has(sign) && handlerInUse !== undefined) {
         this.productions[this.prodCache.get(sign)!][2] = handlerInUse;
       } else {

@@ -128,11 +128,11 @@ export function parseBnf(tokens: Token[], commaSeparate?: boolean) {
       pos = P_SPACE.lastIndex;
     } else if ((res = P_PROD.exec(formatted))) {
       const shift = pos + res[1].length + res[2].length;
-      const name = tokens[pos].value || tokens[pos].lexeme || '[E]';
+      const name = tokens[pos].value ?? tokens[pos].lexeme ?? '[E]';
       const words = (commaSeparate ?
         parseProductionComma(res[3]) :
         parseProductionNonComma(res[3]))
-        .map(x => x.map(y => y.map(z => tokens[shift + z].value || tokens[shift + z].lexeme || '[E]').join(' ')));
+        .map(x => x.map(y => y.map(z => tokens[shift + z].value ?? tokens[shift + z].lexeme ?? '[E]').join(' ')));
       words.forEach(p => ret.push({ name: name, expr: p }));
       pos = P_PROD.lastIndex;
     } else {

@@ -18,6 +18,7 @@ exports.isEbnfList2 = isEbnfList2;
 // conversion
 // special cases of types
 function convertSingle(prod, getName, action) {
+    var _a, _b, _c;
     const cache = [];
     prod.expr.forEach((expr, i) => {
         cache.push({ name: prod.name, expr: expr, action: action });
@@ -41,7 +42,7 @@ function convertSingle(prod, getName, action) {
                             ['epsilon', current.action, [i]] :
                             ['merge', current.action, [i, 0]]
                     });
-                    const mult = curElem.mult || 1;
+                    const mult = (_a = curElem.mult) !== null && _a !== void 0 ? _a : 1;
                     if (mult < 1)
                         continue;
                     else
@@ -74,7 +75,7 @@ function convertSingle(prod, getName, action) {
                     });
                 }
                 else if (curElem.type === 'mult') {
-                    var mult = curElem.mult || 0;
+                    var mult = (_b = curElem.mult) !== null && _b !== void 0 ? _b : 0;
                     if (mult < 0)
                         mult = 0;
                     curElem.productionList.forEach(pl => newExprs.push({
@@ -84,7 +85,7 @@ function convertSingle(prod, getName, action) {
                     }));
                 }
                 else if (curElem.type === 'group') {
-                    var mult = curElem.mult || 1;
+                    var mult = (_c = curElem.mult) !== null && _c !== void 0 ? _c : 1;
                     if (mult < 1)
                         newExprs.push({
                             name: current.name,
@@ -181,6 +182,7 @@ exports.convertToBnf = convertToBnf;
 const identityFunc = (...args) => args;
 exports.identityFunc = identityFunc;
 function compileActionRecord(rec, f) {
+    var _a, _b, _c, _d, _e, _f, _g;
     var nextFunc;
     if (typeof (rec[1]) == 'number')
         nextFunc = f(rec[1]);
@@ -190,31 +192,31 @@ function compileActionRecord(rec, f) {
         nextFunc = exports.identityFunc;
     else
         nextFunc = compileActionRecord(rec[1], f);
-    var nextFunc2 = nextFunc || exports.identityFunc;
+    var nextFunc2 = nextFunc !== null && nextFunc !== void 0 ? nextFunc : exports.identityFunc;
     if (rec[0] == 'epsilon') {
-        var i = rec[2][0] || 0;
+        var i = (_a = rec[2][0]) !== null && _a !== void 0 ? _a : 0;
         return (...args) => nextFunc2(...(args.slice(0, i).concat([undefined]).concat(args.slice(i))));
     }
     else if (rec[0] == 'merge') {
-        var i = rec[2][0] || 0;
-        var t = rec[2][1] || 0;
+        var i = (_b = rec[2][0]) !== null && _b !== void 0 ? _b : 0;
+        var t = (_c = rec[2][1]) !== null && _c !== void 0 ? _c : 0;
         return (...args) => nextFunc2(...(args.slice(0, i).concat([args.slice(i, t)]).concat(args.slice(i + t))));
     }
     else if (rec[0] == 'collect') {
-        var i = rec[2][0] || -1; // currently useless
+        var i = (_d = rec[2][0]) !== null && _d !== void 0 ? _d : -1; // currently useless
         return nextFunc === undefined ?
             (...args) => [args, []] :
             (...args) => nextFunc(args, []);
     }
     else if (rec[0] == 'append') {
-        var i = rec[2][0] || 1; // currently useless
-        var j = rec[2][1] || 1;
+        var i = (_e = rec[2][0]) !== null && _e !== void 0 ? _e : 1; // currently useless
+        var j = (_f = rec[2][1]) !== null && _f !== void 0 ? _f : 1;
         return nextFunc === undefined ?
             (...args) => [args[0][0], args[0][1].concat(args.slice(1))] :
             (...args) => nextFunc(args[0][0], args[0][1].concat(args.slice(1)));
     }
     else if (rec[0] == 'apply') {
-        var i = rec[2][0] || 0; // currently useless
+        var i = (_g = rec[2][0]) !== null && _g !== void 0 ? _g : 0; // currently useless
         return (pre, post) => nextFunc2(...(pre.concat(post)));
     }
     else {

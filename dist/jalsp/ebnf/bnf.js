@@ -81,6 +81,7 @@ const P_NON_COMMA = /(i)( *= *)((?: *(?:i *)+\|?)*)/y;
 const P_COMMA = /(i)( *= *)((?: *(?:i *,? *)+\|?)*)/y;
 const P_SPACE = / +/y;
 function parseBnf(tokens, commaSeparate) {
+    var _a, _b;
     // change it to a string so we can use regex
     // discarded the DFA class because of its speed
     const _formatted = [];
@@ -113,11 +114,11 @@ function parseBnf(tokens, commaSeparate) {
         }
         else if ((res = P_PROD.exec(formatted))) {
             const shift = pos + res[1].length + res[2].length;
-            const name = tokens[pos].value || tokens[pos].lexeme || '[E]';
+            const name = (_b = (_a = tokens[pos].value) !== null && _a !== void 0 ? _a : tokens[pos].lexeme) !== null && _b !== void 0 ? _b : '[E]';
             const words = (commaSeparate ?
                 parseProductionComma(res[3]) :
                 parseProductionNonComma(res[3]))
-                .map(x => x.map(y => y.map(z => tokens[shift + z].value || tokens[shift + z].lexeme || '[E]').join(' ')));
+                .map(x => x.map(y => y.map(z => { var _a, _b; return (_b = (_a = tokens[shift + z].value) !== null && _a !== void 0 ? _a : tokens[shift + z].lexeme) !== null && _b !== void 0 ? _b : '[E]'; }).join(' ')));
             words.forEach(p => ret.push({ name: name, expr: p }));
             pos = P_PROD.lastIndex;
         }

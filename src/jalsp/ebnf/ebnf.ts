@@ -50,7 +50,7 @@ function convertSingle(prod: ComplexProduction, getName: (init: string) => strin
               ['merge', current.action, [i, 0]]
           });
 
-          const mult = curElem.mult || 1;
+          const mult = curElem.mult ?? 1;
           if (mult < 1)
               continue;
           else
@@ -87,7 +87,7 @@ function convertSingle(prod: ComplexProduction, getName: (init: string) => strin
             action: ['apply', current.action, [0]]
           });
         } else if (curElem.type === 'mult') {
-          var mult = curElem.mult || 0;
+          var mult = curElem.mult ?? 0;
           if (mult < 0)
             mult = 0;
           curElem.productionList.forEach(
@@ -98,7 +98,7 @@ function convertSingle(prod: ComplexProduction, getName: (init: string) => strin
             })
           );
         } else if (curElem.type === 'group') {
-          var mult = curElem.mult || 1;
+          var mult = curElem.mult ?? 1;
           if (mult < 1)
             newExprs.push({
               name: current.name, 
@@ -212,28 +212,28 @@ export function compileActionRecord(rec: ProductionHandlerModifier, f: (i: numbe
   else
     nextFunc = compileActionRecord(rec[1], f);
 
-  var nextFunc2 = nextFunc || identityFunc;
+  var nextFunc2 = nextFunc ?? identityFunc;
     
   if (rec[0] == 'epsilon') {
-    var i = rec[2][0] || 0;
+    var i = rec[2][0] ?? 0;
     return (...args) => nextFunc2(...(args.slice(0, i).concat([undefined]).concat(args.slice(i))));
   } else if (rec[0] == 'merge') {
-    var i = rec[2][0] || 0;
-    var t = rec[2][1] || 0;
+    var i = rec[2][0] ?? 0;
+    var t = rec[2][1] ?? 0;
     return (...args) => nextFunc2(...(args.slice(0, i).concat([args.slice(i, t)]).concat(args.slice(i+t))));
   } else if (rec[0] == 'collect') {
-    var i = rec[2][0] || -1; // currently useless
+    var i = rec[2][0] ?? -1; // currently useless
     return nextFunc === undefined ? 
       (...args) => [args, []] : 
       (...args) => nextFunc!(args, []);
   } else if (rec[0] == 'append') {
-    var i = rec[2][0] || 1; // currently useless
-    var j = rec[2][1] || 1;
+    var i = rec[2][0] ?? 1; // currently useless
+    var j = rec[2][1] ?? 1;
     return nextFunc === undefined ? 
       (...args) => [args[0][0], args[0][1].concat(args.slice(1))] : 
       (...args) => nextFunc!(args[0][0], args[0][1].concat(args.slice(1)));
   } else if (rec[0] == 'apply') {
-    var i = rec[2][0] || 0; // currently useless
+    var i = rec[2][0] ?? 0; // currently useless
     return (pre: any[], post: any[]) => nextFunc2(...(pre.concat(post)));
   } else {
     return nextFunc;

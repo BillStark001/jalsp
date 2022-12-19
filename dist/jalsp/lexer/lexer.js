@@ -17,7 +17,7 @@ class Lexer {
         this.records = {};
         this.str = undefined;
         this.pos = 0;
-        this.eof = eofToken || '<<EOF>>';
+        this.eof = eofToken !== null && eofToken !== void 0 ? eofToken : '<<EOF>>';
         for (var rec of records) {
             let r2 = rec[2];
             if (r2.indexOf('y') < 0)
@@ -31,26 +31,27 @@ class Lexer {
         }
     }
     reset(str) {
-        this.str = str || this.str;
+        this.str = str !== null && str !== void 0 ? str : this.str;
         if (this.str != undefined)
             this.rec = (0, str_1.getLinePositions)(this.str);
         this.pos = 0;
         return this;
     }
     seek(pos, from) {
-        var _a;
-        from = from || PositionOptions.Begin;
+        var _a, _b;
+        from = from !== null && from !== void 0 ? from : PositionOptions.Begin;
         if (from == PositionOptions.Current)
             pos += this.pos;
         else if (from == PositionOptions.End)
-            pos += ((_a = this.str) === null || _a === void 0 ? void 0 : _a.length) || 0;
+            pos += (_b = (_a = this.str) === null || _a === void 0 ? void 0 : _a.length) !== null && _b !== void 0 ? _b : 0;
         this.pos = pos;
         return this;
     }
     nextToken() {
+        var _a, _b;
         if (this.str == undefined)
             throw new error_1.LexerError("No input string assigned.");
-        this.rec = this.rec || (0, str_1.getLinePositions)(this.str);
+        this.rec = (_a = this.rec) !== null && _a !== void 0 ? _a : (0, str_1.getLinePositions)(this.str);
         if (this.pos < 0 || this.pos > this.str.length)
             throw new error_1.LexerError(`Invalid pointer position: ${this.pos}.`);
         else if (this.pos >= this.str.length)
@@ -63,7 +64,7 @@ class Lexer {
                 if ((res = pat.exec(this.str)) != null) {
                     this.pos = pat.lastIndex;
                     // determine value
-                    const val = f(res) || res[0];
+                    const val = (_b = f(res)) !== null && _b !== void 0 ? _b : res[0];
                     // determine name
                     var realName = name;
                     if (n !== undefined) { // discard

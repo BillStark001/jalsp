@@ -88,7 +88,7 @@ export default class LRGenerator {
     this.symbolsTable = {};
 
     // determine eof
-    this.EOF = new T(grammar.eofToken || '<<EOF>>');
+    this.EOF = new T(grammar.eofToken ?? '<<EOF>>');
     this.symbols.push(this.EOF);
     this.symbolsTable[this.EOF.toString()] = EOF_INDEX;
     this.terminals.push(this.EOF);
@@ -156,8 +156,8 @@ export default class LRGenerator {
     const selfActions = this.actions;
 
     unparsed.forEach(function (production) {
-      const head = production[0] || '[E]';
-      const body = production[1] || [];
+      const head = production[0] ?? '[E]';
+      const body = production[1] ?? [];
       const action = production[2];
 
       var p = new Production(
@@ -211,7 +211,7 @@ export default class LRGenerator {
 
         const lhss = lhs.toString();
 
-        first[lhss] = first[lhss] || new Set();
+        first[lhss] = first[lhss] ?? new Set();
         if (rhs.length == 0) {
           done = first[lhss].add2(eps) || done;
           nullable[lhss] = true;
@@ -220,7 +220,7 @@ export default class LRGenerator {
           for (i = 0; i < rhs.length; i++) {
             var e = rhs[i];
             var es = e.toString();
-            first[es] = first[es] || new Set();
+            first[es] = first[es] ?? new Set();
             var fwe = new Set(first[es]);
             fwe.delete(eps);
             // add elements
@@ -242,7 +242,7 @@ export default class LRGenerator {
 
     //compute FOLLOW
     const startStr = self.start.toString();
-    follow[startStr] = follow[startStr] || new Set();
+    follow[startStr] = follow[startStr] ?? new Set();
     follow[startStr].add(self.EOF);
     do {
       done = false;
@@ -254,7 +254,7 @@ export default class LRGenerator {
 
           const rhsis = rhs[i].toString();
           if (isNonTerminal(rhs[i])) {
-            follow[rhsis] = follow[rhsis] || new Set();
+            follow[rhsis] = follow[rhsis] ?? new Set();
             if (i < rhs.length - 1) {
               //BUG: here we need to compute first(rhs[i+1]...rhs[n])
               var tail = rhs.slice(i + 1);
@@ -263,12 +263,12 @@ export default class LRGenerator {
               var epsfound = f.delete(eps);
               done = follow[rhsis].addSet2(f) || done;
               if (epsfound) {
-                follow[lhss] = follow[lhss] || new Set();
+                follow[lhss] = follow[lhss] ?? new Set();
                 done = follow[rhsis].addSet2(follow[lhss]) || done;
               }
             } else {
 
-              follow[lhss] = follow[lhss] || new Set();
+              follow[lhss] = follow[lhss] ?? new Set();
               done = follow[rhsis].addSet2(follow[lhss]) || done;
             }
 
@@ -415,7 +415,7 @@ export default class LRGenerator {
     while (i < states.length) {
       // take the Ii state to process at the top of the stack
       var Ii = states[i];
-      var act = (self.action[i] = self.action[i] || {});
+      var act = (self.action[i] = self.action[i] ?? {});
       Ii.forEach(
         function (gitem) {
           //per ogni item
@@ -453,7 +453,7 @@ export default class LRGenerator {
             var an = self.symbolsTable[a.name];
             if (isNonTerminal(a)) {
               // add to table GOTO(i, X) = j
-              (self.goto[i] = self.goto[i] || {})[an] = j;
+              (self.goto[i] = self.goto[i] ?? {})[an] = j;
             } else {
               // add to ACTION(i, X) = shift j
               newAction = ['shift', [j]];
@@ -484,7 +484,7 @@ export default class LRGenerator {
     while (i < states.length) {
       // take the Ii state to process at the top of the stack
       var Ii = states[i];
-      var act = (self.action[i] = self.action[i] || {});
+      var act = (self.action[i] = self.action[i] ?? {});
       Ii.forEach(
         function (lr1item) {
           // for each LR1item
@@ -523,7 +523,7 @@ export default class LRGenerator {
             var an = self.symbolsTable[a.name];
             if (isNonTerminal(a)) {
               // add to table GOTO(i, X) = j
-              (self.goto[i] = self.goto[i] || {})[an] = j;
+              (self.goto[i] = self.goto[i] ?? {})[an] = j;
             } else {
               // add to ACTION(i, X) = shift j
               newAction = ['shift', [j]];
@@ -602,7 +602,7 @@ export default class LRGenerator {
         var p = gitem.production;
         var lookahead = otherLR1item.lookahead;
         var pindex = self.productions.indexOf(p);
-        var act = (self.action[j] = self.action[j] || {});
+        var act = (self.action[j] = self.action[j] ?? {});
         if (!p.head.equals(self.S1)) {
           var newAction: AutomatonActionRecord = ['reduce', [self.symbolsTable[gitem.production.head.name], gitem.production.body.length, pindex]];
           self.tryAddAction(act, gitem, lookahead, newAction);
@@ -618,7 +618,7 @@ export default class LRGenerator {
 
   tryAddAction(act: AutomatonActionRecord[], gitem: GItem, lookahead: GSymbol, newAction: AutomatonActionRecord) {
     const self = this;
-    var an = self.symbolsTable[lookahead.toString()] || 0;
+    var an = self.symbolsTable[lookahead.toString()] ?? 0;
     // console.log(`tryAddAction ${lookahead} ${JSON.stringify(act)} ${an}`);
 
     if (act[an] === undefined) {

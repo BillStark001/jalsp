@@ -137,7 +137,7 @@ export default class Parser<T> {
     var ns = this.goto[t.s][head];
     var value;
     if (this.actions) {
-      var action = this.actions[prodIndex] || identity;
+      var action = this.actions[prodIndex] ?? identity;
       var values = rhs.map(function (si) {
         return si.i?.value;
       });

@@ -92,6 +92,7 @@ class Parser {
         this.a = this.stream.nextToken();
     }
     reduce(head, length, prodIndex) {
+        var _a;
         if (this.stack === undefined) {
             this.error("Symbol stack is not yet initialized.");
             return;
@@ -101,7 +102,7 @@ class Parser {
         var ns = this.goto[t.s][head];
         var value;
         if (this.actions) {
-            var action = this.actions[prodIndex] || identity;
+            var action = (_a = this.actions[prodIndex]) !== null && _a !== void 0 ? _a : identity;
             var values = rhs.map(function (si) {
                 var _a;
                 return (_a = si.i) === null || _a === void 0 ? void 0 : _a.value;

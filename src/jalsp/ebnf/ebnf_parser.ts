@@ -8,8 +8,8 @@ var ebnf = new LRGrammarBuilder()
 
   // .bnf('combine = ', (x) => x?.length)
 
-  .bnf('ident = IDENTIFIER | STRING1 | STRING2', (x) => x || '[E]')
-  .bnf('number = NON_NEG_INTEGER', (x) => x || 0)
+  .bnf('ident = IDENTIFIER | STRING1 | STRING2', (x) => x ?? '[E]')
+  .bnf('number = NON_NEG_INTEGER', (x) => x ?? 0)
   .bnf('elem = ident', (x) => x)
   .bnf('group = elem', (x) => [x])
   .bnf('group = elem group', (x, y) => [x].concat(y))
@@ -37,7 +37,7 @@ var ebnf = new LRGrammarBuilder()
         mult: n
       }
     else {
-      g.mult = g.mult || 1;
+      g.mult = g.mult ?? 1;
       g.mult *= n;
       return g;
     }

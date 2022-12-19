@@ -30,7 +30,7 @@ export default class Lexer implements TokenStream {
     this.records = {};
     this.str = undefined;
     this.pos = 0;
-    this.eof = eofToken || '<<EOF>>';
+    this.eof = eofToken ?? '<<EOF>>';
 
     for (var rec of records) {
       let r2 = rec[2];
@@ -47,7 +47,7 @@ export default class Lexer implements TokenStream {
   }
 
   reset(str?: string) {
-    this.str = str || this.str;
+    this.str = str ?? this.str;
     if (this.str != undefined)
       this.rec = getLinePositions(this.str);
     this.pos = 0;
@@ -55,11 +55,11 @@ export default class Lexer implements TokenStream {
   }
 
   seek(pos: number, from?: PositionOptions) {
-    from = from || PositionOptions.Begin;
+    from = from ?? PositionOptions.Begin;
     if (from == PositionOptions.Current)
       pos += this.pos;
     else if (from == PositionOptions.End)
-      pos += this.str?.length || 0;
+      pos += this.str?.length ?? 0;
     this.pos = pos;
     return this;
   }
@@ -68,7 +68,7 @@ export default class Lexer implements TokenStream {
     if (this.str == undefined)
       throw new LexerError("No input string assigned.");
       
-    this.rec = this.rec || getLinePositions(this.str);
+    this.rec = this.rec ?? getLinePositions(this.str);
     if (this.pos < 0 || this.pos > this.str.length)
       throw new LexerError(`Invalid pointer position: ${this.pos}.`);
     else if (this.pos >= this.str.length)
@@ -83,7 +83,7 @@ export default class Lexer implements TokenStream {
         if ((res = pat.exec(this.str)) != null) {
           this.pos = pat.lastIndex;
           // determine value
-          const val = f(res) || res[0];
+          const val = f(res) ?? res[0];
           // determine name
           var realName = name;
           if (n !== undefined) { // discard

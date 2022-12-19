@@ -20,7 +20,7 @@ var res = parseEbnf(tokens);
 // console.log(res);
 // console.log(JSON.stringify(res));
 var res2 = convertToBnf(res);
-// res2.forEach(x => console.log(x));
+res2.forEach(x => console.log(x));
 
 var weirdLex = J.newLexer()
   .t(() => undefined, / +/)
