@@ -29,7 +29,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.newParser = exports.newLexer = exports.compileActionRecord = exports.convertToBnf = exports.parseEbnf = exports.parseBnf = exports.lexBnf = void 0;
+exports.Parser = exports.Lexer = exports.newParser = exports.newLexer = exports.compileActionRecord = exports.convertToBnf = exports.parseEbnf = exports.parseBnf = exports.lexBnf = void 0;
 const bnf = __importStar(require("./jalsp/ebnf/bnf"));
 const ebnf = __importStar(require("./jalsp/ebnf/ebnf"));
 const ebnfParser = __importStar(require("./jalsp/ebnf/ebnf_parser"));
@@ -61,3 +61,7 @@ __exportStar(require("./jalsp/lexer/builder"), exports);
 __exportStar(require("./jalsp/parser/parser"), exports);
 __exportStar(require("./jalsp/parser/builder"), exports);
 __exportStar(require("./jalsp/parser/generator"), exports);
+const lexer_1 = __importDefault(require("./jalsp/lexer/lexer"));
+exports.Lexer = lexer_1.default;
+const parser_1 = __importDefault(require("./jalsp/parser/parser"));
+exports.Parser = parser_1.default;

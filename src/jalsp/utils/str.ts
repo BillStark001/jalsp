@@ -12,7 +12,7 @@ export function getIncrementName(current: string): string {
   if (matchRes) {
     var ind = matchRes.index || current.length - matchRes[0].length;
     var num = matchRes[1];
-    return current.substring(0, ind) + '_' + String(num);
+    return current.substring(0, ind) + '_' + String(Number(num) + 1);
   } else {
     return current + '_0';
   }

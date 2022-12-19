@@ -30,3 +30,4 @@ describe('Parsing SLR, LALR(1) and LR(1) grammar', () => {
     expect(ret).toBe('((2+(3*4))+5)');
   });
 });
+

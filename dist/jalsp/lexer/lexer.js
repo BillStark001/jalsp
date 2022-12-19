@@ -23,7 +23,11 @@ class Lexer {
             if (r2.indexOf('y') < 0)
                 r2 += 'y';
             const regex = new RegExp(rec[1], r2);
-            this.records[rec[0]] = { pat: regex, f: (_a = actions[rec[3]]) !== null && _a !== void 0 ? _a : ID };
+            this.records[rec[0]] = {
+                pat: regex,
+                f: (_a = actions[rec[3]].h) !== null && _a !== void 0 ? _a : ID,
+                n: actions[rec[3]].n
+            };
         }
     }
     reset(str) {
@@ -35,11 +39,12 @@ class Lexer {
     }
     seek(pos, from) {
         var _a;
-        from = from || PositionOptions.Current;
+        from = from || PositionOptions.Begin;
         if (from == PositionOptions.Current)
             pos += this.pos;
-        if (from == PositionOptions.End)
+        else if (from == PositionOptions.End)
             pos += ((_a = this.str) === null || _a === void 0 ? void 0 : _a.length) || 0;
+        this.pos = pos;
         return this;
     }
     nextToken() {
@@ -52,19 +57,30 @@ class Lexer {
             return { name: this.eof, value: this.eof, lexeme: this.eof, position: this.pos, pos: this.currentFilePosition() };
         else {
             for (const name in this.records) {
-                const { pat, f } = this.records[name];
+                const { pat, f, n } = this.records[name];
                 pat.lastIndex = this.pos;
                 var res;
                 if ((res = pat.exec(this.str)) != null) {
                     this.pos = pat.lastIndex;
+                    // determine value
+                    const val = f(res) || res[0];
+                    // determine name
+                    var realName = name;
+                    if (n !== undefined) { // discard
+                        var _realName = n(val, res[0]);
+                        if (_realName === undefined)
+                            return this.nextToken();
+                        else
+                            realName = _realName;
+                    }
+                    // form token
                     var ret = {
-                        name: name,
+                        name: realName,
                         lexeme: res[0],
+                        value: val,
                         position: res.index,
                         pos: (0, str_1.getLCIndex)(this.rec, res.index, true)
                     };
-                    const val = f(res);
-                    ret.value = val || ret.lexeme;
                     return ret;
                 }
             }

@@ -1,5 +1,5 @@
 import { LexerError } from "../models/error";
-import { Token, TokenDefinition, TokenHandler, TokenStream } from "../models/token";
+import { Token, TokenDefinition, TokenHandler, TokenNameSelector, TokenStream } from "../models/token";
 import { getLCIndex, getLinePositions, Position } from "../utils/str";
 
 const ID: TokenHandler = (arr) => {
@@ -9,6 +9,7 @@ const ID: TokenHandler = (arr) => {
 interface LexerRecord {
   pat: RegExp;
   f: TokenHandler;
+  n?: TokenNameSelector;
 }
 
 export enum PositionOptions {
@@ -37,7 +38,11 @@ export default class Lexer implements TokenStream {
         r2 += 'y';
       const regex = new RegExp(rec[1], r2);
 
-      this.records[rec[0]] = { pat: regex, f: actions[rec[3]] ?? ID };
+      this.records[rec[0]] = { 
+        pat: regex, 
+        f: actions[rec[3]].h ?? ID, 
+        n: actions[rec[3]].n
+      };
     }
   }
 
@@ -50,11 +55,12 @@ export default class Lexer implements TokenStream {
   }
 
   seek(pos: number, from?: PositionOptions) {
-    from = from || PositionOptions.Current;
+    from = from || PositionOptions.Begin;
     if (from == PositionOptions.Current)
       pos += this.pos;
-    if (from == PositionOptions.End)
+    else if (from == PositionOptions.End)
       pos += this.str?.length || 0;
+    this.pos = pos;
     return this;
   }
 
@@ -71,22 +77,34 @@ export default class Lexer implements TokenStream {
 
 
       for (const name in this.records) {
-        const { pat, f } = this.records[name];
+        const { pat, f, n } = this.records[name];
         pat.lastIndex = this.pos;
         var res: RegExpExecArray | null;
         if ((res = pat.exec(this.str)) != null) {
           this.pos = pat.lastIndex;
+          // determine value
+          const val = f(res) || res[0];
+          // determine name
+          var realName = name;
+          if (n !== undefined) { // discard
+            var _realName = n(val, res[0]);
+            if (_realName === undefined)
+              return this.nextToken();
+            else
+              realName = _realName;
+          }
+          // form token
           var ret: Token = {
-            name: name, 
+            name: realName, 
             lexeme: res[0], 
+            value: val, 
             position: res.index, 
             pos: getLCIndex(this.rec, res.index, true)
           }
-          const val = f(res);
-          ret.value = val || ret.lexeme;
           return ret;
         }
       }
+
       var p = this.currentFilePosition();
       throw new LexerError(`Unknown token ${JSON.stringify(
         this.pos + 10 < this.str.length ? 

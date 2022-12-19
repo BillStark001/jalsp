@@ -1,19 +1,25 @@
-import { TokenDefinition, TokenHandler, TokenRecord } from "../models/token";
+import { TokenDefinition, TokenHandler, TokenNameSelector, TokenRecord } from "../models/token";
+import { getIncrementName } from "../utils/str";
 import Lexer from "./lexer";
 
 
 export default class RegExpLexerBuilder {
 
-  actions: (TokenHandler | undefined)[];
+  actions: { h?: TokenHandler, n?: TokenNameSelector }[];
   records: TokenRecord[];
+  usedTokens: Set<string>;
+
+  optionalToken = '';
 
   constructor() {
     this.records = [];
     this.actions = [];
+    this.optionalToken = 'OPTIONAL_TOKEN_0';
+    this.usedTokens = new Set();
   }
 
-  private registerAction(f?: TokenHandler) {
-    return this.actions.push(f) - 1;
+  private registerAction(h?: TokenHandler, n?: TokenNameSelector) {
+    return this.actions.push({ h: h, n: n }) - 1;
   }
 
   /**
@@ -22,7 +28,7 @@ export default class RegExpLexerBuilder {
    * @param pattern The matching pattern. global flag will be moved and sticky flag will be appended when it finally compiles to a RegExp object.
    * @param f The handler.
    */
-  t(name: string, pattern: string | RegExp, f?: TokenHandler) {
+  t(name: string | TokenNameSelector, pattern: string | RegExp, f?: TokenHandler) {
     var flags = 'y';
     var str = '';
     if (pattern instanceof RegExp) {
@@ -35,12 +41,23 @@ export default class RegExpLexerBuilder {
       str = pattern;
     }
     // const regex = new RegExp(str, flags);
-
+    var realName: string;
+    var sel: TokenNameSelector | undefined = undefined;
+    if (typeof(name) == 'string')
+      realName = name;
+    else {
+      while (this.usedTokens.has(this.optionalToken))
+        this.optionalToken = getIncrementName(this.optionalToken);
+      realName = this.optionalToken;
+      sel = name;
+    }
+      
+    this.usedTokens.add(realName);
     this.records.push([
-      name, 
-      str, 
-      flags, 
-      this.registerAction(f)
+      realName,
+      str,
+      flags,
+      this.registerAction(f, sel)
     ]);
 
     return this;
@@ -48,7 +65,7 @@ export default class RegExpLexerBuilder {
 
   define(eof?: string): TokenDefinition {
     return {
-      actions: this.actions, 
+      actions: this.actions,
       records: this.records,
       eofToken: eof
     }

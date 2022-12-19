@@ -1,8 +1,9 @@
-import { Token, TokenDefinition, TokenHandler, TokenStream } from "../models/token";
+import { Token, TokenDefinition, TokenHandler, TokenNameSelector, TokenStream } from "../models/token";
 import { Position } from "../utils/str";
 interface LexerRecord {
     pat: RegExp;
     f: TokenHandler;
+    n?: TokenNameSelector;
 }
 export declare enum PositionOptions {
     Begin = 0,

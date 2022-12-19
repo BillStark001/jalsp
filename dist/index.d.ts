@@ -19,3 +19,7 @@ export * from './jalsp/lexer/builder';
 export * from './jalsp/parser/parser';
 export * from './jalsp/parser/builder';
 export * from './jalsp/parser/generator';
+export { Position } from './jalsp/utils/str';
+import Lexer from './jalsp/lexer/lexer';
+import Parser from './jalsp/parser/parser';
+export { Lexer, Parser };

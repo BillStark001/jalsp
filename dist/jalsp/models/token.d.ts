@@ -1,4 +1,8 @@
 import { Position } from "../utils/str";
+/**
+ * if undefined is returned, the token is ignored
+ */
+export type TokenNameSelector = (value: any | undefined, lexeme: string) => string | undefined;
 export type TokenHandler = (arr: RegExpExecArray) => (any | undefined);
 export interface Token {
     name: string;
@@ -32,7 +36,10 @@ export interface TokenRecord {
     [3]: number;
 }
 export interface TokenDefinition {
-    actions: (TokenHandler | undefined)[];
+    actions: {
+        h?: TokenHandler;
+        n?: TokenNameSelector;
+    }[];
     records: TokenRecord[];
     eofToken?: string;
 }
