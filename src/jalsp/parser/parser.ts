@@ -173,7 +173,8 @@ export default class Parser<T> {
       var { line, col } = this.stream.currentFilePosition();
       throw new ParserError(`Unexpected EOF at (${line}:${col})`);
     } else {
-      throw new ParserError(`Unexpected token ${stringifyToken(token)})`);
+      var stop = this.stack == undefined ? undefined : this.stack[this.stack.length - 1].s;
+      throw new ParserError(`Unexpected token ${stringifyToken(token)} (Stack state: ${stop})`);
     }
 
   }

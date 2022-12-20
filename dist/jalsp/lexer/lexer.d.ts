@@ -1,6 +1,7 @@
 import { Token, TokenDefinition, TokenHandler, TokenNameSelector, TokenStream } from "../models/token";
 import { Position } from "../utils/str";
 interface LexerRecord {
+    name: string;
     pat: RegExp;
     f: TokenHandler;
     n?: TokenNameSelector;
@@ -11,9 +12,7 @@ export declare enum PositionOptions {
     Current = 2
 }
 export default class Lexer implements TokenStream {
-    records: {
-        [name: string]: LexerRecord;
-    };
+    records: LexerRecord[];
     str?: string;
     rec?: number[];
     pos: number;

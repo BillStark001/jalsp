@@ -1,6 +1,6 @@
 import { Token } from '../models/token';
 import 'ts-replace-all';
-import { SimpleProductionCache } from '../models/grammar';
+import { SimpleProduction } from '../models/grammar';
 import { getLCIndex, getLinePositions } from '../utils/str';
 
 interface RegexDict { [key: string]: RegExp };
@@ -91,11 +91,11 @@ export function lexBnf(grammar: string, ebnf?: boolean) {
   return ret;
 }
 
-const P_NON_COMMA = /(i)( *= *)((?: *(?:i *)+\|?)*)/y;
-const P_COMMA = /(i)( *= *)((?: *(?:i *,? *)+\|?)*)/y;
+const P_NON_COMMA = /(i)( *= *)((?: *(?:i *)*\|?)*)/y;
+const P_COMMA = /(i)( *= *)((?: *(?:i *,? *)*\|?)*)/y;
 const P_SPACE = / +/y;
 
-export function parseBnf(tokens: Token[], commaSeparate?: boolean) {
+export function parseBnf(tokens: Token[], commaSeparate?: boolean, action?: number) {
   // change it to a string so we can use regex
   // discarded the DFA class because of its speed
   const _formatted: string[] = [];
@@ -120,7 +120,7 @@ export function parseBnf(tokens: Token[], commaSeparate?: boolean) {
 
   const P_PROD = commaSeparate ? P_COMMA : P_NON_COMMA;
   var pos = 0;
-  var ret: SimpleProductionCache[] = [];
+  var ret: SimpleProduction[] = [];
   while (pos < formatted.length) {
     P_SPACE.lastIndex = P_PROD.lastIndex = pos;
     var res: RegExpExecArray | null;
@@ -133,7 +133,7 @@ export function parseBnf(tokens: Token[], commaSeparate?: boolean) {
         parseProductionComma(res[3]) :
         parseProductionNonComma(res[3]))
         .map(x => x.map(y => y.map(z => tokens[shift + z].value ?? tokens[shift + z].lexeme ?? '[E]').join(' ')));
-      words.forEach(p => ret.push({ name: name, expr: p }));
+      words.forEach(p => ret.push({ name: name, expr: p, action: action }));
       pos = P_PROD.lastIndex;
     } else {
       throw new Error(`Non-BNF grammar found at position ${tokens[pos].position} (Token: ${tokens[pos].name}(${JSON.stringify(tokens[pos].lexeme)}))`);

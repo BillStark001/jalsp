@@ -32,10 +32,12 @@ class WrappedTokenArray {
         return t.name == this.eof.name;
     }
     currentPosition() {
-        return this.tokens[this.pos].position || -1;
+        var _a, _b;
+        return (_b = (_a = this.tokens[this.pos]) === null || _a === void 0 ? void 0 : _a.position) !== null && _b !== void 0 ? _b : -1;
     }
     currentFilePosition() {
-        return this.tokens[this.pos].pos || this.eof.pos;
+        var _a, _b;
+        return (_b = (_a = this.tokens[this.pos]) === null || _a === void 0 ? void 0 : _a.pos) !== null && _b !== void 0 ? _b : this.eof.pos;
     }
     reset() {
         this.pos = 0;

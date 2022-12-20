@@ -15,20 +15,10 @@ export interface EbnfElement {
 }
 export interface ComplexProduction {
     name: string;
-    expr: (string | EbnfElement)[][];
-    action?: ProductionHandler;
+    expr: (string | EbnfElement)[];
+    action?: number | ProductionHandlerModifier;
 }
 export interface SimpleProduction {
-    [0]: string;
-    [1]: string[];
-    [2]?: ProductionHandler;
-}
-export interface ComplexProductionCache {
-    name: string;
-    expr: (string | EbnfElement)[];
-    action: number | ProductionHandlerModifier;
-}
-export interface SimpleProductionCache {
     name: string;
     expr: string[];
     action?: number | ProductionHandlerModifier;
@@ -44,6 +34,7 @@ export interface GrammarDefinition {
     mode?: 'LALR1' | 'SLR' | 'LR1';
     tokens: string[];
     productions: SimpleProduction[];
+    actions: (ProductionHandler | undefined)[];
     operators: OperatorDefinition[];
     startSymbol?: string;
     eofToken?: string;

@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node dist/playground.js",
     "build": "tsc -p .",
-    "build-and-start": "npm run build && npm run start", 
+    "playground": "npm run build && npm run start", 
     "test": "jest"
   },
   "author": "Bill Stark",

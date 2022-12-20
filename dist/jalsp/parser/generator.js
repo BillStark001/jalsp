@@ -6,6 +6,7 @@ const symbol_1 = require("./symbol");
 require("../utils/enum_extensions");
 const str_1 = require("../utils/str");
 const error_1 = require("../models/error");
+const ebnf_1 = require("../ebnf/ebnf");
 const EOF_INDEX = 0;
 function printActionTable(action) {
     var _a;
@@ -57,7 +58,7 @@ class LRGenerator {
         this.operators = {};
         this.productions = [];
         this.actions = [];
-        this.processProductions(grammar.productions);
+        this.processProductions(grammar.productions, (i) => grammar.actions[i]);
         if (grammar.operators !== undefined) {
             grammar.operators.forEach(function (opList) {
                 self.operators[opList.name] = [opList.assoc, opList.prio];
@@ -105,16 +106,22 @@ class LRGenerator {
      * here we split productions and actions, create internal productions and validate them
      * @param unparsed a list consists of simple BNF productions
      */
-    processProductions(unparsed) {
+    processProductions(unparsed, actionTable) {
         const self = this;
         const selfProductions = this.productions;
         const selfActions = this.actions;
         unparsed.forEach(function (production) {
             var _a, _b;
-            const head = (_a = production[0]) !== null && _a !== void 0 ? _a : '[E]';
-            const body = (_b = production[1]) !== null && _b !== void 0 ? _b : [];
-            const action = production[2];
-            var p = new instrument_1.Production(self.addGrammarElement(head), body.map(function (element) { return self.addGrammarElement(element); }));
+            const head = (_a = production.name) !== null && _a !== void 0 ? _a : '[E]';
+            const body = (_b = production.expr) !== null && _b !== void 0 ? _b : [];
+            var action = undefined;
+            if (typeof (production.action) == 'number' || production.action instanceof Number)
+                action = actionTable(Number(production.action));
+            else if (typeof (production.action) == 'undefined')
+                action = undefined;
+            else
+                action = (0, ebnf_1.compileActionRecord)(production.action, actionTable);
+            var p = new instrument_1.Production(self.addGrammarElement(head), body.map((element) => self.addGrammarElement(element)));
             selfProductions.push(p);
             selfActions.push(action);
         });
@@ -123,7 +130,7 @@ class LRGenerator {
         if (this.symbolsTable[element] == undefined) {
             var el = undefined;
             if (this.tokens.has(element)) {
-                //it's a terminal
+                // it's a terminal
                 el = new symbol_1.T(element);
                 this.terminals.push(el);
             }
@@ -136,7 +143,7 @@ class LRGenerator {
         }
         return this.symbols[this.symbolsTable[element]];
     }
-    //Computes FIRST and FOLLOW sets
+    // Computes FIRST and FOLLOW sets
     computeFirstAndFollow() {
         var _a;
         const self = this;
@@ -147,7 +154,7 @@ class LRGenerator {
             first[t.toString()] = new Set([t]);
         });
         var done = false;
-        //compute FIRST
+        // compute FIRST
         do {
             done = false;
             self.productions.forEach(function (p) {
@@ -173,16 +180,16 @@ class LRGenerator {
                         if (!first[es].has(symbol_1.eps))
                             break;
                     }
-                    //let's check if all rhs elements were nullable
+                    // let's check if all rhs elements were nullable
                     if ((i === rhs.length) && (first[rhs[i - 1].toString()].has(symbol_1.eps))) {
                         done = first[lhss].add2(symbol_1.eps) || done;
                     }
                 }
             });
         } while (done);
-        //this is needed for computeFirst
+        // this is needed for computeFirst
         self.first = first;
-        //compute FOLLOW
+        // compute FOLLOW
         const startStr = self.start.toString();
         follow[startStr] = (_a = follow[startStr]) !== null && _a !== void 0 ? _a : new Set();
         follow[startStr].add(self.EOF);
@@ -198,9 +205,9 @@ class LRGenerator {
                     if ((0, symbol_1.isNonTerminal)(rhs[i])) {
                         follow[rhsis] = (_a = follow[rhsis]) !== null && _a !== void 0 ? _a : new Set();
                         if (i < rhs.length - 1) {
-                            //BUG: here we need to compute first(rhs[i+1]...rhs[n])
+                            // BUG: here we need to compute first(rhs[i+1]...rhs[n])
                             var tail = rhs.slice(i + 1);
-                            //var f = first[rhs[i + 1]].clone();
+                            // var f = first[rhs[i + 1]].clone();
                             var f = self.computeFirst(tail);
                             var epsfound = f.delete(symbol_1.eps);
                             done = follow[rhsis].addSet2(f) || done;
@@ -251,7 +258,7 @@ class LRGenerator {
     }
     closure(items) {
         const self = this;
-        var stack = Array.from(items); //.toArray();
+        var stack = Array.from(items); // .toArray();
         var p = 0;
         while (p < stack.length) {
             var item = stack[p];
@@ -270,7 +277,7 @@ class LRGenerator {
     }
     closureLR1(items) {
         const self = this;
-        var stack = Array.from(items); //.toArray();
+        var stack = Array.from(items); // .toArray();
         var p = 0;
         while (p < stack.length) {
             var item = stack[p].item;
@@ -307,33 +314,33 @@ class LRGenerator {
                 }
             }
         });
-        //Nota: potrebbero esserci ripetizioni.
+        // Nota: potrebbero esserci ripetizioni.
         return this.closure(j);
     }
     gotoLR1(i, x) {
         var j = [];
-        i.forEach(function (lr1item) {
-            var gitem = lr1item.item;
-            if (!gitem.isAtEnd()) {
-                var a = lr1item.lookahead;
-                if (gitem.symbolAhead() === x) {
-                    j.push(new instrument_1.LR1Item(gitem.nextItem(), a));
+        i.forEach(function (lr1Item) {
+            var gItem = lr1Item.item;
+            if (!gItem.isAtEnd()) {
+                var a = lr1Item.lookahead;
+                if (gItem.symbolAhead().equals(x)) {
+                    j.push(new instrument_1.LR1Item(gItem.nextItem(), a));
                 }
             }
         });
-        //Nota: potrebbero esserci ripetizioni.
+        // Nota: potrebbero esserci ripetizioni.
         return this.closureLR1(j);
     }
     computeSLR() {
         var _a;
         const self = this;
         self.determineS1();
-        var states = [];
+        const states = [];
         var newAction;
         self.action = {};
         self.goto = {};
         self.startProduction = new instrument_1.Production(self.S1, [self.start]);
-        //Inizia da I0 (stato 0): closure({[S'::=S,§]}) sullo stack da elaborare
+        // start at I0 (state 0): closureLR1({[S'::=S,§]}) on stack to process
         self.startItem = self.closure([self.startProduction.getItems()[0]]);
         states.push(self.startItem);
         var i = 0;
@@ -341,38 +348,38 @@ class LRGenerator {
             // take the Ii state to process at the top of the stack
             var Ii = states[i];
             var act = (self.action[i] = (_a = self.action[i]) !== null && _a !== void 0 ? _a : {});
-            Ii.forEach(function (gitem) {
+            Ii.forEach(function (gItem) {
                 var _a;
-                //per ogni item
-                if (gitem.isAtEnd()) {
+                // for each item
+                if (gItem.isAtEnd()) {
                     // if A is not S',  add ACTION(i, a) = reduce (A -> X)
-                    var p = gitem.production;
-                    var pindex = self.productions.indexOf(p);
-                    if (p.head !== self.S1) {
+                    var p = gItem.production;
+                    var pIndex = self.productions.indexOf(p);
+                    if (!p.head.equals(self.S1)) {
                         var follow = self.follow[p.head.toString()];
                         follow.forEach(function (a) {
-                            newAction = ['reduce', [self.symbolsTable[gitem.production.head.name], gitem.production.body.length, pindex]];
-                            self.tryAddAction(act, gitem, a, newAction);
+                            newAction = ['reduce', [self.symbolsTable[gItem.production.head.name], gItem.production.body.length, pIndex]];
+                            self.tryAddAction(act, gItem, a, newAction);
                         });
                     }
-                    else { //A == S'
+                    else { // A == S'
                         act[EOF_INDEX] = ['accept', []];
-                        self.actionTrack.set(act[EOF_INDEX], gitem);
+                        self.actionTrack.set(act[EOF_INDEX], gItem);
                     }
                 }
-                else //not at end
+                else // not at end
                  {
-                    var a = gitem.symbolAhead();
-                    //Calcola Ij=gotoLR1(Ii,X)
+                    var a = gItem.symbolAhead();
+                    // compute Ij = goto(Ii, X)
                     var Ij = self.gotoLR0(Ii, a);
-                    //check if IJ is on the stack
+                    // check if IJ is on the stack
                     var j = self.findState(states, Ij);
                     if (j < 0) {
                         // push if Ij is not on the stack
                         j = states.push(Ij) - 1;
                     }
                     else {
-                        //console.log("state already found");
+                        // console.log("state already found");
                     }
                     // otherwise j = (position of Ij on the stack)
                     var an = self.symbolsTable[a.name];
@@ -383,7 +390,7 @@ class LRGenerator {
                     else {
                         // add to ACTION(i, X) = shift j
                         newAction = ['shift', [j]];
-                        self.tryAddAction(act, gitem, a, newAction);
+                        self.tryAddAction(act, gItem, a, newAction);
                     }
                 }
             });
@@ -396,7 +403,7 @@ class LRGenerator {
         var _a;
         const self = this;
         self.determineS1();
-        var states = [];
+        const states = [];
         var newAction;
         self.action = {};
         self.goto = {};
@@ -409,31 +416,31 @@ class LRGenerator {
             // take the Ii state to process at the top of the stack
             var Ii = states[i];
             var act = (self.action[i] = (_a = self.action[i]) !== null && _a !== void 0 ? _a : {});
-            Ii.forEach(function (lr1item) {
+            Ii.forEach(function (lr1Item) {
                 var _a;
                 // for each LR1item
-                var gitem = lr1item.item;
-                var lookahead = lr1item.lookahead;
-                if (gitem.isAtEnd()) {
+                var gItem = lr1Item.item;
+                var lookahead = lr1Item.lookahead;
+                if (gItem.isAtEnd()) {
                     // if A is not S',  add ACTION(i, a) = reduce (A -> X)
-                    var p = gitem.production;
-                    var pindex = self.productions.indexOf(p);
+                    var p = gItem.production;
+                    var pIndex = self.productions.indexOf(p);
                     if (!p.head.equals(self.S1)) {
-                        newAction = ['reduce', [self.symbolsTable[gitem.production.head.name], gitem.production.body.length, pindex]];
-                        self.tryAddAction(act, gitem, lookahead, newAction);
+                        newAction = ['reduce', [self.symbolsTable[gItem.production.head.name], gItem.production.body.length, pIndex]];
+                        self.tryAddAction(act, gItem, lookahead, newAction);
                     }
-                    else { //A == S'
+                    else { // A == S'
                         act[EOF_INDEX] = ['accept', []];
-                        self.actionTrack.set(act[EOF_INDEX], gitem);
+                        self.actionTrack.set(act[EOF_INDEX], gItem);
                     }
                 }
-                else //not at end
+                else // not at end
                  {
-                    var a = gitem.symbolAhead();
-                    // compute Ij = gotoLR1(Ii, X)
+                    var a = gItem.symbolAhead();
+                    // compute Ij = goto(Ii, X)
                     var Ij = self.gotoLR1(Ii, a);
                     // check if IJ is on the stack
-                    var j = lalr1 ? self.findSimilarState(states, Ij) : self.findState(states, Ij);
+                    var j = self.findState(states, Ij, lalr1);
                     if (j < 0) {
                         // push if Ij is not on the stack
                         j = states.push(Ij) - 1;
@@ -451,7 +458,7 @@ class LRGenerator {
                     else {
                         // add to ACTION(i, X) = shift j
                         newAction = ['shift', [j]];
-                        self.tryAddAction(act, gitem, a, newAction);
+                        self.tryAddAction(act, gItem, a, newAction);
                     }
                 }
             });
@@ -460,19 +467,18 @@ class LRGenerator {
         self.statesTable = states;
         self.startState = 0;
     }
-    findState(list, state) {
-        var self = this;
+    findState(list, state, lr1ItemSimilar) {
         for (var i = 0; i < list.length; i++) {
             var s = list[i];
             if (s.length != state.length)
                 continue;
-            //check if every item in s is also in state
+            // check if every item in s is also in state
             var equals = true;
             for (var i1 = 0; i1 < s.length; i1++) {
                 var item1 = s[i1];
-                var found = state.filter(function (item2) {
-                    return item2.equals(item1);
-                }).length > 0;
+                var found = state.filter(lr1ItemSimilar ?
+                    (item2) => item2.item.equals(item1.item) :
+                    (item2) => item2.equals(item1)).length > 0;
                 if (!found) {
                     equals = false;
                     break;
@@ -481,59 +487,43 @@ class LRGenerator {
             if (equals)
                 return i;
         }
-        //we exited the loop, the state was not found
-        return -1;
-    }
-    findSimilarState(list, state) {
-        const self = this;
-        for (var i = 0; i < list.length; i++) {
-            var s = list[i];
-            if (s.length != state.length)
-                continue;
-            //check if every item in s is also in state
-            var equals = true;
-            for (var i1 = 0; i1 < s.length; i1++) {
-                var item1 = s[i1];
-                var found = state.filter(function (item2) {
-                    return item2.item.equals(item1.item);
-                }).length > 0;
-                if (!found) {
-                    equals = false;
-                    break;
-                }
-            }
-            if (equals)
-                return i;
-        }
-        //we exited the loop, the state was not found
+        // we exited the loop, the state was not found
         return -1;
     }
     mergeStates(j, state, other) {
         const self = this;
-        state.forEach(function (lr1item) {
+        state.forEach(function (lr1Item) {
             var _a;
-            if (lr1item.item.isAtEnd()) {
-                var otherLR1item = other.filter(function (oLR1item) {
-                    return oLR1item.item.equals(lr1item.item);
+            if (lr1Item.item.isAtEnd()) {
+                const otherLR1item = other.filter((oLR1item) => {
+                    return oLR1item.item.equals(lr1Item.item);
                 })[0];
-                //merge the lookahead of otherLR1item into the ones of lr1item
-                var gitem = otherLR1item.item;
-                var p = gitem.production;
-                var lookahead = otherLR1item.lookahead;
-                var pindex = self.productions.indexOf(p);
+                if (otherLR1item == undefined)
+                    return;
+                // merge the lookahead of otherLR1item into the ones of lr1Item
+                const gItem = otherLR1item.item;
+                const p = gItem.production;
+                const lookahead = otherLR1item.lookahead;
+                const pIndex = self.productions.findIndex(x => x.equals(p));
                 var act = (self.action[j] = (_a = self.action[j]) !== null && _a !== void 0 ? _a : {});
-                if (!p.head.equals(self.S1)) {
-                    var newAction = ['reduce', [self.symbolsTable[gitem.production.head.name], gitem.production.body.length, pindex]];
-                    self.tryAddAction(act, gitem, lookahead, newAction);
-                }
-                else { //A == S'
+                if (p.head.equals(self.S1)) { // A == S'
                     act[EOF_INDEX] = ['accept', []];
-                    self.actionTrack.set(act[EOF_INDEX], gitem);
+                    self.actionTrack.set(act[EOF_INDEX], gItem);
+                }
+                else {
+                    var newAction = [
+                        'reduce', [
+                            self.symbolsTable[gItem.production.head.name],
+                            gItem.production.body.length,
+                            pIndex
+                        ]
+                    ];
+                    self.tryAddAction(act, gItem, lookahead, newAction);
                 }
             }
         });
     }
-    tryAddAction(act, gitem, lookahead, newAction) {
+    tryAddAction(act, gItem, lookahead, newAction) {
         var _a;
         const self = this;
         var an = (_a = self.symbolsTable[lookahead.toString()]) !== null && _a !== void 0 ? _a : 0;
@@ -542,24 +532,24 @@ class LRGenerator {
             act[an] = newAction;
         }
         else {
-            //check if prod contains an operator and compare it to a
-            act[an] = self.resolveConflict(act[an], newAction, lookahead, gitem, self.actionTrack.get(act[an]));
+            // check if prod contains an operator and compare it to a
+            act[an] = self.resolveConflict(act[an], newAction, lookahead, gItem, self.actionTrack.get(act[an]));
         }
-        self.actionTrack.set(act[an], gitem);
+        self.actionTrack.set(act[an], gItem);
     }
     getSymbols() {
         return this.nonTerminals.concat(this.terminals);
     }
-    getConflictText(type, sym, gitem, conflict) {
+    getConflictText(type, sym, gItem, conflict) {
         var cflStr = '';
         if (conflict)
-            cflStr = `between ${gitem} and ${conflict}`;
+            cflStr = `between ${gItem} and ${conflict}`;
         else
-            cflStr = `in ${gitem}`;
+            cflStr = `in ${gItem}`;
         return `${type} conflict ${cflStr} on ${sym}`;
     }
-    resolveConflict(currentAction, newAction, a, gitem, conflict) {
-        //if current action is reduce we have a prod, otherwise?
+    resolveConflict(currentAction, newAction, a, gItem, conflict) {
+        // if current action is reduce we have a prod, otherwise?
         var shiftAction, reduceAction;
         var curtype = currentAction[0];
         var prod;
@@ -568,7 +558,7 @@ class LRGenerator {
             if (newAction[0] == 'reduce') {
                 if (newAction[1][0] != currentAction[1][0] || newAction[1][1] != currentAction[1][1]
                     || newAction[1][2] != currentAction[1][2]) {
-                    throw new error_1.ParserError(this.getConflictText('Reduce/Reduce', a, gitem, conflict), [gitem, conflict]);
+                    throw new error_1.ParserError(this.getConflictText('Reduce/Reduce', a, gItem, conflict), [gItem, conflict]);
                 }
                 else {
                     return currentAction;
@@ -578,53 +568,53 @@ class LRGenerator {
                 shiftAction = newAction;
             }
         }
-        else { //current is shift
+        else { // current is shift
             shiftAction = currentAction;
             if (newAction[0] === 'shift') {
                 if (newAction[1][0] != currentAction[1][0]) {
-                    throw new error_1.ParserError(this.getConflictText('Shift/Shift', a, gitem, conflict), [gitem, conflict]);
+                    throw new error_1.ParserError(this.getConflictText('Shift/Shift', a, gItem, conflict), [gItem, conflict]);
                 }
                 else {
                     return currentAction;
                 }
             }
             else {
-                //new Action is Reduce
+                // new Action is Reduce
                 reduceAction = newAction;
             }
         }
         prod = this.productions[reduceAction[1][2]];
-        //check if a is an operator
+        // check if a is an operator
         const operators = this.operators;
         if (operators && operators[a.name]) {
             var aassoc = operators[a.name][0];
             var aprio = operators[a.name][1];
-            //check if prod contains an operator
+            // check if prod contains an operator
             var op = prod.body.filter(function (t) {
                 return operators[t.name]; // isTerminal(t) && 
             })[0];
             if (op) {
                 var redassoc = operators[op.name][0];
                 var redprio = operators[op.name][1];
-                //first check if it is the same priority
+                // first check if it is the same priority
                 if (aprio === redprio) {
-                    //check associativity
+                    // check associativity
                     if (redassoc === 'nonassoc') {
                         return ['error', [`Shift/Reduce conflict: Operator ${JSON.stringify(op)} is non-associative.`]];
                     }
                     else if (redassoc === 'left') {
-                        //prefer reduce
+                        // prefer reduce
                         return reduceAction;
                     }
                     else {
-                        //prefer shift
+                        // prefer shift
                         return shiftAction;
                     }
                 }
                 else if (aprio > redprio) {
                     return shiftAction;
                 }
-                else { //aprio < redprio
+                else { // aprio < redprio
                     return reduceAction;
                 }
             }
@@ -632,9 +622,9 @@ class LRGenerator {
             }
         }
         else {
-            //a is not an operator
+            // a is not an operator
         }
-        throw new error_1.ParserError(this.getConflictText('Shift/Reduce', a, gitem, conflict), [gitem, conflict]);
+        throw new error_1.ParserError(this.getConflictText('Shift/Reduce', a, gItem, conflict), [gItem, conflict]);
     }
     generateParsedGrammar() {
         const specs = this;

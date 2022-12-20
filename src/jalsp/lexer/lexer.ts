@@ -7,6 +7,7 @@ const ID: TokenHandler = (arr) => {
 }
 
 interface LexerRecord {
+  name: string;
   pat: RegExp;
   f: TokenHandler;
   n?: TokenNameSelector;
@@ -20,14 +21,14 @@ export enum PositionOptions {
 
 export default class Lexer implements TokenStream {
 
-  records: { [name: string]: LexerRecord }
+  records: LexerRecord[]
   str?: string;
   rec?: number[];
   pos: number;
   eof: string;
 
   constructor({ actions, records, eofToken }: TokenDefinition) {
-    this.records = {};
+    this.records = [];
     this.str = undefined;
     this.pos = 0;
     this.eof = eofToken ?? '<<EOF>>';
@@ -38,11 +39,12 @@ export default class Lexer implements TokenStream {
         r2 += 'y';
       const regex = new RegExp(rec[1], r2);
 
-      this.records[rec[0]] = { 
+      this.records.push({ 
+        name: rec[0], 
         pat: regex, 
         f: actions[rec[3]].h ?? ID, 
         n: actions[rec[3]].n
-      };
+      });
     }
   }
 
@@ -76,8 +78,7 @@ export default class Lexer implements TokenStream {
     else {
 
 
-      for (const name in this.records) {
-        const { pat, f, n } = this.records[name];
+      for (const { name, pat, f, n } of this.records) {
         pat.lastIndex = this.pos;
         var res: RegExpExecArray | null;
         if ((res = pat.exec(this.str)) != null) {

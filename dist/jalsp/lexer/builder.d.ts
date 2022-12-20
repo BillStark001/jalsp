@@ -1,15 +1,15 @@
 import { TokenDefinition, TokenHandler, TokenNameSelector, TokenRecord } from "../models/token";
 import Lexer from "./lexer";
 export default class RegExpLexerBuilder {
-    actions: {
+    protected actions: {
         h?: TokenHandler;
         n?: TokenNameSelector;
     }[];
-    records: TokenRecord[];
-    usedTokens: Set<string>;
-    optionalToken: string;
-    constructor();
-    private registerAction;
+    protected records: TokenRecord[];
+    protected usedTokens: Set<string>;
+    protected optionalToken: string;
+    constructor(lexicon?: TokenDefinition | RegExpLexerBuilder);
+    protected registerAction(h?: TokenHandler, n?: TokenNameSelector): number;
     /**
      *
      * @param name The token name.

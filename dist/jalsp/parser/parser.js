@@ -133,7 +133,8 @@ class Parser {
             throw new error_1.ParserError(`Unexpected EOF at (${line}:${col})`);
         }
         else {
-            throw new error_1.ParserError(`Unexpected token ${(0, token_1.stringifyToken)(token)})`);
+            var stop = this.stack == undefined ? undefined : this.stack[this.stack.length - 1].s;
+            throw new error_1.ParserError(`Unexpected token ${(0, token_1.stringifyToken)(token)} (Stack state: ${stop})`);
         }
     }
 }

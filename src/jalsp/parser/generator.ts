@@ -1,10 +1,11 @@
 import { IEquatable } from "../utils/equatable";
-import { AutomatonActionRecord, GrammarDefinition, ProductionHandler, SimpleProduction as SimpleProduction } from "../models/grammar";
+import { AutomatonActionRecord, GrammarDefinition, ProductionHandler, SimpleProduction } from "../models/grammar";
 import { GItem, LR1Item, Production } from "./instrument";
 import { eps, GSymbol, isNonTerminal, isTerminal, NT, T } from "./symbol";
 import '../utils/enum_extensions';
 import { getIncrementName } from "../utils/str";
 import { ParserError } from "../models/error";
+import { compileActionRecord } from "../ebnf/ebnf";
 
 const EOF_INDEX = 0;
 
@@ -98,7 +99,7 @@ export default class LRGenerator {
 
     this.productions = [];
     this.actions = [];
-    this.processProductions(grammar.productions);
+    this.processProductions(grammar.productions, (i) => grammar.actions[i]);
 
     if (grammar.operators !== undefined) {
       grammar.operators.forEach(function (opList) {
@@ -150,19 +151,26 @@ export default class LRGenerator {
    * here we split productions and actions, create internal productions and validate them
    * @param unparsed a list consists of simple BNF productions
    */
-  processProductions(unparsed: SimpleProduction[]) {
+  processProductions(unparsed: SimpleProduction[], actionTable: (i: number) => ProductionHandler | undefined) {
     const self = this;
     const selfProductions = this.productions;
     const selfActions = this.actions;
 
     unparsed.forEach(function (production) {
-      const head = production[0] ?? '[E]';
-      const body = production[1] ?? [];
-      const action = production[2];
+      const head = production.name ?? '[E]';
+      const body = production.expr ?? [];
+
+      var action: ProductionHandler | undefined = undefined;
+      if (typeof (production.action) == 'number' || production.action instanceof Number)
+        action = actionTable(Number(production.action));
+      else if (typeof (production.action) == 'undefined')
+        action = undefined;
+      else
+        action = compileActionRecord(production.action, actionTable);
 
       var p = new Production(
         self.addGrammarElement(head),
-        body.map(function (element) { return self.addGrammarElement(element); })
+        body.map((element) => self.addGrammarElement(element))
       );
       selfProductions.push(p);
       selfActions.push(action);
@@ -176,7 +184,7 @@ export default class LRGenerator {
     if (this.symbolsTable[element] == undefined) {
       var el = undefined;
       if (this.tokens.has(element)) {
-        //it's a terminal
+        // it's a terminal
         el = new T(element);
         this.terminals.push(el);
       } else {
@@ -189,7 +197,7 @@ export default class LRGenerator {
     return this.symbols[this.symbolsTable[element]];
   }
 
-  //Computes FIRST and FOLLOW sets
+  // Computes FIRST and FOLLOW sets
   computeFirstAndFollow() {
     const self = this;
 
@@ -202,7 +210,7 @@ export default class LRGenerator {
 
     var done = false;
 
-    //compute FIRST
+    // compute FIRST
     do {
       done = false;
       self.productions.forEach(function (p) {
@@ -227,7 +235,7 @@ export default class LRGenerator {
             done = first[lhss].addSet2(fwe) || done;
             if (!first[es].has(eps)) break;
           }
-          //let's check if all rhs elements were nullable
+          // let's check if all rhs elements were nullable
           if ((i === rhs.length) && (first[rhs[i - 1].toString()].has(eps))) {
             done = first[lhss].add2(eps) || done;
           }
@@ -237,10 +245,10 @@ export default class LRGenerator {
 
     } while (done);
 
-    //this is needed for computeFirst
+    // this is needed for computeFirst
     self.first = first;
 
-    //compute FOLLOW
+    // compute FOLLOW
     const startStr = self.start.toString();
     follow[startStr] = follow[startStr] ?? new Set();
     follow[startStr].add(self.EOF);
@@ -256,9 +264,9 @@ export default class LRGenerator {
           if (isNonTerminal(rhs[i])) {
             follow[rhsis] = follow[rhsis] ?? new Set();
             if (i < rhs.length - 1) {
-              //BUG: here we need to compute first(rhs[i+1]...rhs[n])
+              // BUG: here we need to compute first(rhs[i+1]...rhs[n])
               var tail = rhs.slice(i + 1);
-              //var f = first[rhs[i + 1]].clone();
+              // var f = first[rhs[i + 1]].clone();
               var f = self.computeFirst(tail);
               var epsfound = f.delete(eps);
               done = follow[rhsis].addSet2(f) || done;
@@ -319,7 +327,7 @@ export default class LRGenerator {
 
   closure(items: GItem[]) {
     const self = this;
-    var stack = Array.from(items);//.toArray();
+    var stack = Array.from(items);// .toArray();
     var p = 0;
     while (p < stack.length) {
       var item = stack[p];
@@ -341,7 +349,7 @@ export default class LRGenerator {
 
   closureLR1(items: LR1Item[]) {
     const self = this;
-    var stack = Array.from(items);//.toArray();
+    var stack = Array.from(items);// .toArray();
     var p = 0;
     while (p < stack.length) {
       var item = stack[p].item;
@@ -379,35 +387,35 @@ export default class LRGenerator {
         }
       }
     });
-    //Nota: potrebbero esserci ripetizioni.
+    // Nota: potrebbero esserci ripetizioni.
     return this.closure(j);
   }
 
   gotoLR1(i: LR1Item[], x: GSymbol) {
     var j: LR1Item[] = [];
-    i.forEach(function (lr1item) {
-      var gitem = lr1item.item;
-      if (!gitem.isAtEnd()) {
-        var a = lr1item.lookahead;
-        if (gitem.symbolAhead() === x) {
-          j.push(new LR1Item(gitem.nextItem(), a));
+    i.forEach(function (lr1Item) {
+      var gItem = lr1Item.item;
+      if (!gItem.isAtEnd()) {
+        var a = lr1Item.lookahead;
+        if (gItem.symbolAhead().equals(x)) {
+          j.push(new LR1Item(gItem.nextItem(), a));
         }
       }
     });
-    //Nota: potrebbero esserci ripetizioni.
+    // Nota: potrebbero esserci ripetizioni.
     return this.closureLR1(j);
   }
 
   computeSLR() {
     const self = this;
     self.determineS1();
-    var states: GItem[][] = [];
+    const states: GItem[][] = [];
 
     var newAction: AutomatonActionRecord;
     self.action = {};
     self.goto = {};
     self.startProduction = new Production(self.S1, [self.start]);
-    //Inizia da I0 (stato 0): closure({[S'::=S,§]}) sullo stack da elaborare
+    // start at I0 (state 0): closureLR1({[S'::=S,§]}) on stack to process
     self.startItem = self.closure([self.startProduction.getItems()[0]]);
 
     states.push(self.startItem);
@@ -417,37 +425,37 @@ export default class LRGenerator {
       var Ii = states[i];
       var act = (self.action[i] = self.action[i] ?? {});
       Ii.forEach(
-        function (gitem) {
-          //per ogni item
-          if (gitem.isAtEnd()) {
+        function (gItem) {
+          // for each item
+          if (gItem.isAtEnd()) {
             // if A is not S',  add ACTION(i, a) = reduce (A -> X)
-            var p = gitem.production;
-            var pindex = self.productions.indexOf(p);
-            if (p.head !== self.S1) {
+            var p = gItem.production;
+            var pIndex = self.productions.indexOf(p);
+            if (!p.head.equals(self.S1)) {
               var follow = self.follow[p.head.toString()];
               follow.forEach(function (a) {
-                newAction = ['reduce', [self.symbolsTable[gitem.production.head.name], gitem.production.body.length, pindex]];
-                self.tryAddAction(act, gitem, a, newAction);
+                newAction = ['reduce', [self.symbolsTable[gItem.production.head.name], gItem.production.body.length, pIndex]];
+                self.tryAddAction(act, gItem, a, newAction);
               });
             }
-            else { //A == S'
+            else { // A == S'
               act[EOF_INDEX] = ['accept', []];
-              self.actionTrack.set(act[EOF_INDEX], gitem);
+              self.actionTrack.set(act[EOF_INDEX], gItem);
             }
           }
-          else //not at end
+          else // not at end
           {
-            var a = gitem.symbolAhead();
-            //Calcola Ij=gotoLR1(Ii,X)
+            var a = gItem.symbolAhead();
+            // compute Ij = goto(Ii, X)
             var Ij = self.gotoLR0(Ii, a);
-            //check if IJ is on the stack
+            // check if IJ is on the stack
             var j = self.findState(states, Ij);
             if (j < 0) {
               // push if Ij is not on the stack
               j = states.push(Ij) - 1;
             }
             else {
-              //console.log("state already found");
+              // console.log("state already found");
             }
             // otherwise j = (position of Ij on the stack)
             var an = self.symbolsTable[a.name];
@@ -457,7 +465,7 @@ export default class LRGenerator {
             } else {
               // add to ACTION(i, X) = shift j
               newAction = ['shift', [j]];
-              self.tryAddAction(act, gitem, a, newAction);
+              self.tryAddAction(act, gItem, a, newAction);
             }
           }
         }
@@ -471,7 +479,7 @@ export default class LRGenerator {
   computeLR1(lalr1?: boolean) {
     const self = this;
     self.determineS1();
-    var states: LR1Item[][] = [];
+    const states: LR1Item[][] = [];
 
     var newAction: AutomatonActionRecord;
     self.action = {};
@@ -486,31 +494,31 @@ export default class LRGenerator {
       var Ii = states[i];
       var act = (self.action[i] = self.action[i] ?? {});
       Ii.forEach(
-        function (lr1item) {
+        function (lr1Item) {
           // for each LR1item
-          var gitem = lr1item.item;
+          var gItem = lr1Item.item;
 
-          var lookahead = lr1item.lookahead;
-          if (gitem.isAtEnd()) {
+          var lookahead = lr1Item.lookahead;
+          if (gItem.isAtEnd()) {
             // if A is not S',  add ACTION(i, a) = reduce (A -> X)
-            var p = gitem.production;
-            var pindex = self.productions.indexOf(p);
+            var p = gItem.production;
+            var pIndex = self.productions.indexOf(p);
             if (!p.head.equals(self.S1)) {
-              newAction = ['reduce', [self.symbolsTable[gitem.production.head.name], gitem.production.body.length, pindex]];
-              self.tryAddAction(act, gitem, lookahead, newAction);
+              newAction = ['reduce', [self.symbolsTable[gItem.production.head.name], gItem.production.body.length, pIndex]];
+              self.tryAddAction(act, gItem, lookahead, newAction);
             }
-            else { //A == S'
+            else { // A == S'
               act[EOF_INDEX] = ['accept', []];
-              self.actionTrack.set(act[EOF_INDEX], gitem);
+              self.actionTrack.set(act[EOF_INDEX], gItem);
             }
           }
-          else //not at end
+          else // not at end
           {
-            var a = gitem.symbolAhead();
-            // compute Ij = gotoLR1(Ii, X)
+            var a = gItem.symbolAhead();
+            // compute Ij = goto(Ii, X)
             var Ij = self.gotoLR1(Ii, a);
             // check if IJ is on the stack
-            var j = lalr1 ? self.findSimilarState(states, Ij) : self.findState(states, Ij);
+            var j = self.findState(states, Ij, lalr1);
             if (j < 0) {
               // push if Ij is not on the stack
               j = states.push(Ij) - 1;
@@ -527,7 +535,7 @@ export default class LRGenerator {
             } else {
               // add to ACTION(i, X) = shift j
               newAction = ['shift', [j]];
-              self.tryAddAction(act, gitem, a, newAction);
+              self.tryAddAction(act, gItem, a, newAction);
             }
           }
         }
@@ -538,20 +546,19 @@ export default class LRGenerator {
     self.startState = 0;
   }
 
-  findState(list: IEquatable[][], state: IEquatable[]) {
-    var self = this;
+  findState(list: IEquatable[][], state: IEquatable[], lr1ItemSimilar?: boolean) {
     for (var i = 0; i < list.length; i++) {
       var s = list[i];
       if (s.length != state.length) continue;
-      //check if every item in s is also in state
+      // check if every item in s is also in state
       var equals = true;
       for (var i1 = 0; i1 < s.length; i1++) {
         var item1 = s[i1];
 
         var found = state.filter(
-          function (item2) {
-            return item2.equals(item1);
-          }
+          lr1ItemSimilar ?
+            (item2) => (item2 as LR1Item).item.equals((item1 as LR1Item).item) :
+            (item2) => item2.equals(item1)
         ).length > 0;
         if (!found) {
           equals = false;
@@ -560,63 +567,45 @@ export default class LRGenerator {
       }
       if (equals) return i;
     }
-    //we exited the loop, the state was not found
-    return -1;
-  }
-
-  findSimilarState(list: LR1Item[][], state: LR1Item[]) {
-    const self = this;
-    for (var i = 0; i < list.length; i++) {
-      var s = list[i];
-      if (s.length != state.length) continue;
-      //check if every item in s is also in state
-      var equals = true;
-      for (var i1 = 0; i1 < s.length; i1++) {
-        var item1 = s[i1];
-
-        var found = state.filter(
-          function (item2) {
-            return item2.item.equals(item1.item);
-          }
-        ).length > 0;
-        if (!found) {
-          equals = false;
-          break;
-        }
-      }
-      if (equals) return i;
-    }
-    //we exited the loop, the state was not found
+    // we exited the loop, the state was not found
     return -1;
   }
 
   mergeStates(j: number, state: LR1Item[], other: LR1Item[]) {
     const self = this;
-    state.forEach(function (lr1item) {
-      if (lr1item.item.isAtEnd()) {
-        var otherLR1item: LR1Item | undefined = other.filter(function (oLR1item) {
-          return oLR1item.item.equals(lr1item.item);
+    state.forEach(function (lr1Item) {
+      if (lr1Item.item.isAtEnd()) {
+        const otherLR1item: LR1Item | undefined = other.filter((oLR1item) => {
+          return oLR1item.item.equals(lr1Item.item);
         })[0];
-        //merge the lookahead of otherLR1item into the ones of lr1item
-        var gitem = otherLR1item.item;
-        var p = gitem.production;
-        var lookahead = otherLR1item.lookahead;
-        var pindex = self.productions.indexOf(p);
+        if (otherLR1item == undefined)
+          return;
+
+        // merge the lookahead of otherLR1item into the ones of lr1Item
+        const gItem = otherLR1item.item;
+        const p = gItem.production;
+        const lookahead = otherLR1item.lookahead;
+        const pIndex = self.productions.findIndex(x => x.equals(p));
+
         var act = (self.action[j] = self.action[j] ?? {});
-        if (!p.head.equals(self.S1)) {
-          var newAction: AutomatonActionRecord = ['reduce', [self.symbolsTable[gitem.production.head.name], gitem.production.body.length, pindex]];
-          self.tryAddAction(act, gitem, lookahead, newAction);
-        }
-        else { //A == S'
+        if (p.head.equals(self.S1)) { // A == S'
           act[EOF_INDEX] = ['accept', []];
-          self.actionTrack.set(act[EOF_INDEX], gitem);
+          self.actionTrack.set(act[EOF_INDEX], gItem);
+        } else {
+          var newAction: AutomatonActionRecord = [
+            'reduce', [
+              self.symbolsTable[gItem.production.head.name],
+              gItem.production.body.length,
+              pIndex
+            ]];
+          self.tryAddAction(act, gItem, lookahead, newAction);
         }
       }
 
     });
   }
 
-  tryAddAction(act: AutomatonActionRecord[], gitem: GItem, lookahead: GSymbol, newAction: AutomatonActionRecord) {
+  tryAddAction(act: AutomatonActionRecord[], gItem: GItem, lookahead: GSymbol, newAction: AutomatonActionRecord) {
     const self = this;
     var an = self.symbolsTable[lookahead.toString()] ?? 0;
     // console.log(`tryAddAction ${lookahead} ${JSON.stringify(act)} ${an}`);
@@ -624,10 +613,10 @@ export default class LRGenerator {
     if (act[an] === undefined) {
       act[an] = newAction;
     } else {
-      //check if prod contains an operator and compare it to a
-      act[an] = self.resolveConflict(act[an], newAction, lookahead, gitem, self.actionTrack.get(act[an]));
+      // check if prod contains an operator and compare it to a
+      act[an] = self.resolveConflict(act[an], newAction, lookahead, gItem, self.actionTrack.get(act[an]));
     }
-    self.actionTrack.set(act[an], gitem);
+    self.actionTrack.set(act[an], gItem);
   }
 
 
@@ -636,17 +625,17 @@ export default class LRGenerator {
   }
 
 
-  getConflictText(type: string, sym: GSymbol, gitem: GItem, conflict?: GItem) {
+  getConflictText(type: string, sym: GSymbol, gItem: GItem, conflict?: GItem) {
     var cflStr = '';
     if (conflict)
-      cflStr = `between ${gitem} and ${conflict}`;
+      cflStr = `between ${gItem} and ${conflict}`;
     else
-      cflStr = `in ${gitem}`;
+      cflStr = `in ${gItem}`;
     return `${type} conflict ${cflStr} on ${sym}`;
   }
 
-  resolveConflict(currentAction: AutomatonActionRecord, newAction: AutomatonActionRecord, a: GSymbol, gitem: GItem, conflict?: GItem): AutomatonActionRecord {
-    //if current action is reduce we have a prod, otherwise?
+  resolveConflict(currentAction: AutomatonActionRecord, newAction: AutomatonActionRecord, a: GSymbol, gItem: GItem, conflict?: GItem): AutomatonActionRecord {
+    // if current action is reduce we have a prod, otherwise?
     var shiftAction, reduceAction;
     var curtype = currentAction[0];
     var prod;
@@ -656,7 +645,7 @@ export default class LRGenerator {
       if (newAction[0] == 'reduce') {
         if (newAction[1][0] != currentAction[1][0] || newAction[1][1] != currentAction[1][1]
           || newAction[1][2] != currentAction[1][2]) {
-          throw new ParserError(this.getConflictText('Reduce/Reduce', a, gitem, conflict), [gitem, conflict]);
+          throw new ParserError(this.getConflictText('Reduce/Reduce', a, gItem, conflict), [gItem, conflict]);
         }
         else {
           return currentAction;
@@ -664,29 +653,29 @@ export default class LRGenerator {
       } else {
         shiftAction = newAction;
       }
-    } else { //current is shift
+    } else { // current is shift
       shiftAction = currentAction;
       if (newAction[0] === 'shift') {
         if (newAction[1][0] != currentAction[1][0]) {
-          throw new ParserError(this.getConflictText('Shift/Shift', a, gitem, conflict), [gitem, conflict]);
+          throw new ParserError(this.getConflictText('Shift/Shift', a, gItem, conflict), [gItem, conflict]);
         } else {
           return currentAction;
         }
       } else {
-        //new Action is Reduce
+        // new Action is Reduce
         reduceAction = newAction;
       }
     }
 
     prod = this.productions[reduceAction[1][2] as number];
 
-    //check if a is an operator
+    // check if a is an operator
 
     const operators = this.operators;
     if (operators && operators[a.name]) {
       var aassoc = operators[a.name][0];
       var aprio = operators[a.name][1];
-      //check if prod contains an operator
+      // check if prod contains an operator
       var op = prod.body.filter(function (t) {
         return operators[t.name]; // isTerminal(t) && 
       })[0];
@@ -694,21 +683,21 @@ export default class LRGenerator {
       if (op) {
         var redassoc = operators[op.name][0];
         var redprio = operators[op.name][1];
-        //first check if it is the same priority
+        // first check if it is the same priority
         if (aprio === redprio) {
-          //check associativity
+          // check associativity
           if (redassoc === 'nonassoc') {
             return ['error', [`Shift/Reduce conflict: Operator ${JSON.stringify(op)} is non-associative.`]]
           } else if (redassoc === 'left') {
-            //prefer reduce
+            // prefer reduce
             return reduceAction;
           } else {
-            //prefer shift
+            // prefer shift
             return shiftAction;
           }
         } else if (aprio > redprio) {
           return shiftAction;
-        } else { //aprio < redprio
+        } else { // aprio < redprio
           return reduceAction;
         }
       }
@@ -717,9 +706,9 @@ export default class LRGenerator {
       }
 
     } else {
-      //a is not an operator
+      // a is not an operator
     }
-    throw new ParserError(this.getConflictText('Shift/Reduce', a, gitem, conflict), [gitem, conflict])
+    throw new ParserError(this.getConflictText('Shift/Reduce', a, gItem, conflict), [gItem, conflict])
   }
 
   generateParsedGrammar(): ParsedGrammar {

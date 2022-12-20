@@ -1,6 +1,8 @@
 import { lexBnf, parseBnf } from "../ebnf/bnf";
+import { convertToBnf } from "../ebnf/ebnf";
 import { ParserError } from "../models/error";
-import { GrammarDefinition, SimpleProduction, OperatorDefinition, ProductionHandler } from "../models/grammar";
+import { ComplexProduction, GrammarDefinition, OperatorDefinition, ProductionHandler, SimpleProduction } from "../models/grammar";
+import { Token } from "../models/token";
 import LRGenerator, { ParsedGrammar } from "./generator";
 import Parser from "./parser";
 
@@ -10,29 +12,69 @@ export interface GrammarBuildingOptions {
   mode?: 'LALR1' | 'SLR' | 'LR1' | 'lalr1' | 'slr' | 'lr1',
   tokens?: string[],
 
-  startSymbol?: string, 
-  eofToken?: string, 
-  
+  startSymbol?: string,
+  eofToken?: string,
+
 }
 
 export default class LRGrammarBuilder {
 
-  private productions: SimpleProduction[];
-  private operators: OperatorDefinition[];
+  protected productions: SimpleProduction[];
+  protected operators: OperatorDefinition[];
 
-  private prodCache: Map<string, number>;
-  private oprCache: Map<string, number>;
-  private lowestHierarchy: number;
+  protected prodCache: Map<string, number>;
+  protected oprCache: Map<string, number>;
+  protected lowestHierarchy: number;
 
-  private actions: (ProductionHandler | undefined)[];
+  protected actions: (ProductionHandler | undefined)[];
 
-  constructor() {
-    this.productions = [];
-    this.operators = [];
+  protected parseEbnf?: (prods: Token[]) => ComplexProduction[];
+
+  constructor(grammar?: LRGrammarBuilder | GrammarDefinition) {
+    var builder: LRGrammarBuilder | undefined = undefined;
+    var def: GrammarDefinition | undefined = undefined;
+    if (grammar !== undefined) {
+      if (grammar instanceof LRGrammarBuilder) {
+        builder = grammar;
+      } else {
+        def = grammar;
+      }
+    }
+
+    this.productions = Array.from(builder?.productions ?? def?.productions ?? [])
+      .map(x => ({ name: x.name, expr: x.expr, action: x.action }));
+    this.operators = Array.from(builder?.operators ?? def?.operators ?? [])
+      .map(x => ({ assoc: x.assoc, name: x.name, prio: x.prio }));
     this.prodCache = new Map();
+    this.productions.forEach((x, i) => this.prodCache.set(JSON.stringify([x.name, x.expr]), i));
     this.oprCache = new Map();
+    this.operators.forEach((x, i) => this.oprCache.set(x.name, i));
     this.lowestHierarchy = 65536;
     this.actions = [];
+
+    this.parseEbnf = undefined;
+  }
+
+  act(handler?: ProductionHandler) {
+    if (handler == undefined)
+      return undefined;
+    const index = this.actions.length;
+    this.actions.push(handler);
+    return index;
+  }
+
+  protected bnfInner(prods: SimpleProduction[], handlerIndex?: number) {
+    for (var p of prods) {
+      const sign = JSON.stringify([p.name, p.expr]);
+      const handlerInUse = handlerIndex ?? p.action;
+      if (this.prodCache.has(sign) && handlerInUse !== undefined) {
+        this.productions[this.prodCache.get(sign)!].action = handlerInUse;
+      } else {
+        this.prodCache.set(sign, this.productions.length);
+        p.action = handlerInUse;
+        this.productions.push(p);
+      }
+    }
   }
 
   bnf(
@@ -41,23 +83,40 @@ export default class LRGrammarBuilder {
   ) {
     // normalize prod to array
     if (typeof (prods) == 'string' || prods instanceof String)
-      prods = parseBnf(lexBnf(prods as string, false))
-        .map(x => [x.name, x.expr, undefined]);
-    else if (typeof (prods[0]) == 'string' || prods[0] instanceof String)
+      prods = parseBnf(lexBnf(prods as string, false));
+    // .map(x => [x.name, x.expr, undefined]);
+    else if (!(prods instanceof Array))
       prods = [prods as SimpleProduction];
 
+    const handlerIndex = this.act(handler);
 
-    for (var p of prods as SimpleProduction[]) {
-      const sign = JSON.stringify([p[0], p[1]]);
-      const handlerInUse = handler ?? p[2];
-      if (this.prodCache.has(sign) && handlerInUse !== undefined) {
-        this.productions[this.prodCache.get(sign)!][2] = handlerInUse;
-      } else {
-        this.prodCache.set(sign, this.productions.length);
-        p[2] = handlerInUse;
-        this.productions.push(p);
-      }
+    this.bnfInner(prods, handlerIndex);
+    return this;
+  }
+
+  registerEbnfParser(parser: (prods: Token[]) => ComplexProduction[]) {
+    this.parseEbnf = parser;
+  }
+
+  ebnf(
+    prods: string | ComplexProduction | ComplexProduction[], 
+    handler?: ProductionHandler
+  ) {
+    
+    // normalize prod to array
+    if (typeof (prods) == 'string' || prods instanceof String) {
+      if (this.parseEbnf == undefined)
+      throw new ParserError('No EBNF parser is registered in this builder instance.');
+      prods = this.parseEbnf(lexBnf(prods as string, true));
     }
+    // .map(x => [x.name, x.expr, undefined]);
+    else if (!(prods instanceof Array))
+      prods = [prods as ComplexProduction];
+
+    const handlerIndex = this.act(handler);
+    var simpleProds = convertToBnf(prods, handlerIndex);
+    this.bnfInner(simpleProds, handlerIndex);
+
     return this;
   }
 
@@ -100,8 +159,8 @@ export default class LRGrammarBuilder {
     var tokens = options?.tokens;
     if (tokens === undefined) { // calculate all terminals
       tokens = [];
-      var nts = new Set(this.productions.map(x => x[0]));
-      this.productions.forEach(x => x[1].forEach(name => {
+      var nts = new Set(this.productions.map(x => x.name));
+      this.productions.forEach(x => x.expr.forEach(name => {
         if (!nts.has(name))
           tokens!.push(name);
       }));
@@ -114,9 +173,10 @@ export default class LRGrammarBuilder {
       mode: mode as any,
       tokens: tokens,
       productions: this.productions,
-      operators: this.operators, 
-      startSymbol: options?.startSymbol, 
-      eofToken: options?.eofToken, 
+      actions: this.actions,
+      operators: this.operators,
+      startSymbol: options?.startSymbol,
+      eofToken: options?.eofToken,
     }
   }
 

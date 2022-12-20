@@ -62,10 +62,10 @@ export class WrappedTokenArray implements TokenStream {
     return t.name == this.eof.name;
   }
   currentPosition(): number {
-    return this.tokens[this.pos].position || -1;
+    return this.tokens[this.pos]?.position ?? -1;
   }
   currentFilePosition(): Position {
-    return this.tokens[this.pos].pos || this.eof.pos!;
+    return this.tokens[this.pos]?.pos ?? this.eof.pos!;
   }
 
   reset() {

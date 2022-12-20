@@ -5,20 +5,33 @@ import Lexer from "./lexer";
 
 export default class RegExpLexerBuilder {
 
-  actions: { h?: TokenHandler, n?: TokenNameSelector }[];
-  records: TokenRecord[];
-  usedTokens: Set<string>;
+  protected actions: { h?: TokenHandler, n?: TokenNameSelector }[];
+  protected records: TokenRecord[];
+  protected usedTokens: Set<string>;
 
-  optionalToken = '';
+  protected optionalToken = '';
 
-  constructor() {
-    this.records = [];
-    this.actions = [];
-    this.optionalToken = 'OPTIONAL_TOKEN_0';
-    this.usedTokens = new Set();
+  constructor(lexicon?: TokenDefinition | RegExpLexerBuilder) {
+
+    var builder: RegExpLexerBuilder | undefined = undefined;
+    var def: TokenDefinition | undefined = undefined;
+    if (lexicon !== undefined) {
+      if (lexicon instanceof RegExpLexerBuilder) {
+        builder = lexicon;
+      } else {
+        def = lexicon;
+      }
+    }
+
+    this.actions = Array.from(builder?.actions ?? def?.actions ?? [])
+      .map(x => ({ h: x.h, n: x.n }));
+    this.records = Array.from(builder?.records ?? def?.records ?? [])
+      .map(x => [x[0], x[1], x[2], x[3]]);
+    this.usedTokens = new Set(this.records.map(x => x[0]));
+    this.optionalToken = builder?.optionalToken ?? 'OPTIONAL_TOKEN_0';
   }
 
-  private registerAction(h?: TokenHandler, n?: TokenNameSelector) {
+  protected registerAction(h?: TokenHandler, n?: TokenNameSelector) {
     return this.actions.push({ h: h, n: n }) - 1;
   }
 
@@ -43,7 +56,7 @@ export default class RegExpLexerBuilder {
     // const regex = new RegExp(str, flags);
     var realName: string;
     var sel: TokenNameSelector | undefined = undefined;
-    if (typeof(name) == 'string')
+    if (typeof (name) == 'string')
       realName = name;
     else {
       while (this.usedTokens.has(this.optionalToken))
@@ -51,7 +64,7 @@ export default class RegExpLexerBuilder {
       realName = this.optionalToken;
       sel = name;
     }
-      
+
     this.usedTokens.add(realName);
     this.records.push([
       realName,

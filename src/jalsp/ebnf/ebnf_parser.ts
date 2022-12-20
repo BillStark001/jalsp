@@ -1,7 +1,7 @@
 import { EbnfElement, ComplexProduction } from "../models/grammar";
 import { Token, WrappedTokenArray } from "../models/token";
 import LRGrammarBuilder from "../parser/builder";
-import LRGenerator from "../parser/generator";
+import LRGenerator, { printActionTable } from "../parser/generator";
 import Parser from "../parser/parser";
 
 var ebnf = new LRGrammarBuilder()
@@ -42,19 +42,19 @@ var ebnf = new LRGrammarBuilder()
       return g;
     }
   })
-  .bnf('groups = group | groups OR group', (a, o, b) => {
+  .bnf('groups = group | groups OR group', (a, o, b): (string | EbnfElement)[][] => {
     if (o)
       return a.concat([b]);
     else
       return [a];
   })
-  .bnf('prod = ident DEFINITION groups', (i, _, g): ComplexProduction => {
-    return {
+  .bnf('prod = ident DEFINITION groups', (i, _, g: (string | EbnfElement)[][]): ComplexProduction[] => {
+    return g.map<ComplexProduction>(h => ({
       name: i,
-      expr: g,
-    };
+      expr: h,
+    }));
   })
-
+  .bnf('prod = ident DEFINITION', (i, _): Array<ComplexProduction> => [{name: i, expr: []}])
 
   .bnf('prods = ', () => [])
   .bnf('prods = prod', (p) => [p])
@@ -66,15 +66,12 @@ var ebnf = new LRGrammarBuilder()
   .opr('left', 'elem')
 
   .opr('left', 'COMMA')
-  .opr('left', 'RB_L', 'RB_R')
-  .opr('left', 'SB_L', 'SB_R')
-  .opr('left', 'CB_L', 'CB_R')
   .opr('left', 'MULT')
   .opr('left', 'OR')
   // .opr('left', 'DEFINITION')
 
   .define({
-    mode: 'LALR1',
+    mode: 'SLR',
     eofToken: 'EOF',
     startSymbol: 'prods'
   });
@@ -96,6 +93,6 @@ export default function parseEbnf(tokens: Token[]): ComplexProduction[] {
   var res = parser.parse(new WrappedTokenArray(
     tokens
       .filter(x => x.name != 'SPACE'), 'EOF'
-  ), {});
+  ), {}).flat();
   return res;
 }

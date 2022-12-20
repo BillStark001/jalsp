@@ -51,25 +51,23 @@ var ebnf = new builder_1.default()
         return [a];
 })
     .bnf('prod = ident DEFINITION groups', (i, _, g) => {
-    return {
+    return g.map(h => ({
         name: i,
-        expr: g,
-    };
+        expr: h,
+    }));
 })
+    .bnf('prod = ident DEFINITION', (i, _) => [{ name: i, expr: [] }])
     .bnf('prods = ', () => [])
     .bnf('prods = prod', (p) => [p])
     .bnf('prods = prods SEP prod', (ps, _, p) => ps.concat([p]))
     .bnf('prods = prods SEP', (ps, _) => ps)
     .opr('left', 'elem')
     .opr('left', 'COMMA')
-    .opr('left', 'RB_L', 'RB_R')
-    .opr('left', 'SB_L', 'SB_R')
-    .opr('left', 'CB_L', 'CB_R')
     .opr('left', 'MULT')
     .opr('left', 'OR')
     // .opr('left', 'DEFINITION')
     .define({
-    mode: 'LALR1',
+    mode: 'SLR',
     eofToken: 'EOF',
     startSymbol: 'prods'
 });
@@ -84,7 +82,7 @@ var specs = gen.generateParsedGrammar();
 var parser = new parser_1.default(specs);
 function parseEbnf(tokens) {
     var res = parser.parse(new token_1.WrappedTokenArray(tokens
-        .filter(x => x.name != 'SPACE'), 'EOF'), {});
+        .filter(x => x.name != 'SPACE'), 'EOF'), {}).flat();
     return res;
 }
 exports.default = parseEbnf;

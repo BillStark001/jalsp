@@ -45,11 +45,11 @@ const convertToBnf = ebnf.convertToBnf;
 exports.convertToBnf = convertToBnf;
 const compileActionRecord = ebnf.compileActionRecord;
 exports.compileActionRecord = compileActionRecord;
-const newLexer = () => new builder_1.default();
+const newLexer = (lexicon) => new builder_1.default(lexicon);
 exports.newLexer = newLexer;
-const newParser = () => {
-    var ret = new builder_2.default();
-    // TODO add EBNF support
+const newParser = (grammar) => {
+    var ret = new builder_2.default(grammar);
+    ret.registerEbnfParser(parseEbnf);
     return ret;
 };
 exports.newParser = newParser;

@@ -1,11 +1,12 @@
 import { IEquatable } from "../utils/equatable";
 import { GSymbol } from "./symbol";
-export declare class Production {
+export declare class Production implements IEquatable {
     head: GSymbol;
     body: GSymbol[];
     dot: number;
     items?: GItem[];
     constructor(head: GSymbol, body: GSymbol[]);
+    equals(obj: any): boolean;
     toString(dot?: number): string;
     getItems(): GItem[];
 }

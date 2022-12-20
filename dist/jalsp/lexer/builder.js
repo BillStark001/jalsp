@@ -6,12 +6,25 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const str_1 = require("../utils/str");
 const lexer_1 = __importDefault(require("./lexer"));
 class RegExpLexerBuilder {
-    constructor() {
+    constructor(lexicon) {
+        var _a, _b, _c, _d, _e;
         this.optionalToken = '';
-        this.records = [];
-        this.actions = [];
-        this.optionalToken = 'OPTIONAL_TOKEN_0';
-        this.usedTokens = new Set();
+        var builder = undefined;
+        var def = undefined;
+        if (lexicon !== undefined) {
+            if (lexicon instanceof RegExpLexerBuilder) {
+                builder = lexicon;
+            }
+            else {
+                def = lexicon;
+            }
+        }
+        this.actions = Array.from((_b = (_a = builder === null || builder === void 0 ? void 0 : builder.actions) !== null && _a !== void 0 ? _a : def === null || def === void 0 ? void 0 : def.actions) !== null && _b !== void 0 ? _b : [])
+            .map(x => ({ h: x.h, n: x.n }));
+        this.records = Array.from((_d = (_c = builder === null || builder === void 0 ? void 0 : builder.records) !== null && _c !== void 0 ? _c : def === null || def === void 0 ? void 0 : def.records) !== null && _d !== void 0 ? _d : [])
+            .map(x => [x[0], x[1], x[2], x[3]]);
+        this.usedTokens = new Set(this.records.map(x => x[0]));
+        this.optionalToken = (_e = builder === null || builder === void 0 ? void 0 : builder.optionalToken) !== null && _e !== void 0 ? _e : 'OPTIONAL_TOKEN_0';
     }
     registerAction(h, n) {
         return this.actions.push({ h: h, n: n }) - 1;

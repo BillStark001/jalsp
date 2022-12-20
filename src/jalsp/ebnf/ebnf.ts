@@ -1,7 +1,7 @@
 
 // EBNF elements
 
-import { ComplexProduction, EbnfElement, ProductionHandlerModifier, SimpleProductionCache, ComplexProductionCache, ProductionHandler } from "../models/grammar";
+import { EbnfElement, ProductionHandlerModifier, SimpleProduction, ComplexProduction, ProductionHandler } from "../models/grammar";
 import { getIncrementName } from "../utils/str";
 
 
@@ -22,12 +22,9 @@ export function isEbnfList2(elem: any) {
 // special cases of types
 function convertSingle(prod: ComplexProduction, getName: (init: string) => string, action: number) {
 
-  const cache: ComplexProductionCache[] = [];
-  prod.expr.forEach((expr, i) => {
-    cache.push({ name: prod.name, expr: expr, action: action });
-  });
+  const cache: ComplexProduction[] = [prod];
 
-  const ret: SimpleProductionCache[] = [];
+  const ret: SimpleProduction[] = [];
   while (cache.length > 0) {
     const current = cache.pop()!;
     var handled = false;
@@ -38,7 +35,7 @@ function convertSingle(prod: ComplexProduction, getName: (init: string) => strin
         const preExpr = current.expr.slice(0, i);
         const postExpr = current.expr.slice(i + 1);
 
-        const newExprs: ComplexProductionCache[] = cache;
+        const newExprs: ComplexProduction[] = cache;
 
         if (curElem.type === 'optional') {
           newExprs.push({
@@ -131,14 +128,14 @@ function convertSingle(prod: ComplexProduction, getName: (init: string) => strin
     if (handled) {
       // do nothing...
     } else {
-      ret.push(current as SimpleProductionCache);
+      ret.push(current as SimpleProduction);
     }
   }
   return ret;
 }
 
 // general
-export function convertToBnf(unparsed: ComplexProduction[]) {
+export function convertToBnf(unparsed: ComplexProduction[], actionOverride?: number) {
   const nonTerminals: Set<string> = new Set();
   const terminals: Set<string> = new Set();
 
@@ -149,13 +146,11 @@ export function convertToBnf(unparsed: ComplexProduction[]) {
     nonTerminals.add(prod.name);
   }
   for (const prod of unparsed) {
-    for (var expr of prod.expr) {
-      for (var token of expr) {
-        if (isEbnf(token))
-          nameStack.push(token as EbnfElement);
-        else if (!nonTerminals.has(String(token)))
-          terminals.add(String(token));
-      }
+    for (var token of prod.expr) {
+      if (isEbnf(token))
+        nameStack.push(token as EbnfElement);
+      else if (!nonTerminals.has(String(token)))
+        terminals.add(String(token));
     }
   }
   while (nameStack.length > 0) {
@@ -171,7 +166,7 @@ export function convertToBnf(unparsed: ComplexProduction[]) {
   }
 
   // convert in order
-  const converted: SimpleProductionCache[] = [];
+  const converted: SimpleProduction[] = [];
   const convertedCache: Set<string> = new Set();
 
   const getName = (name: string) => {
@@ -183,7 +178,7 @@ export function convertToBnf(unparsed: ComplexProduction[]) {
 
   for (var i = 0; i < unparsed.length; ++i) {
     const current = unparsed[i];
-    const parsed = convertSingle(current, getName, i);
+    const parsed = convertSingle(current, getName, actionOverride ?? i);
     for (var bnf of parsed) {
       var sign = JSON.stringify([bnf.name, bnf.expr]);
       if (!convertedCache.has(sign)) {
@@ -200,7 +195,7 @@ export function convertToBnf(unparsed: ComplexProduction[]) {
 
 export const identityFunc: ProductionHandler = (...args) => args;
 
-export function compileActionRecord(rec: ProductionHandlerModifier, f: (i: number) => ProductionHandler): ProductionHandler {
+export function compileActionRecord(rec: ProductionHandlerModifier, f: (i: number) => ProductionHandler | undefined): ProductionHandler | undefined {
   
   var nextFunc: ProductionHandler | undefined;
   if (typeof(rec[1]) == 'number')

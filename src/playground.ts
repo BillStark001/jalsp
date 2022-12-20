@@ -9,6 +9,7 @@ expr ::= (expr | HXD)  * 3 OPR2 expr | OPR1 expr | expr '?' expr ':' expr;
 expr : IDENT | LITERAL;
 
 Assignment = Identifier ':=' ( 'integer' | Identifier | 'string' );
+expr = expr { "," expr | "." expr }
 
 `;
 

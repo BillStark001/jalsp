@@ -2,7 +2,7 @@ import { IEquatable } from "../utils/equatable";
 import { eps, GSymbol } from "./symbol";
 
 
-export class Production {
+export class Production implements IEquatable {
 
   head: GSymbol;
   body: GSymbol[];
@@ -13,6 +13,18 @@ export class Production {
     this.head = head;
     this.body = body;
     this.dot = -1;
+  }
+  equals(obj: any): boolean {
+    if (!(obj instanceof Production))
+      return false;
+    if (this === obj)
+      return true;
+    if (!this.head.equals(obj.head) || this.body.length != obj.body.length)
+      return false;
+    for (var i = 0; i < this.body.length; ++i)
+      if (!this.body[i].equals(obj.body[i]))
+        return false;
+    return true;
   }
 
   toString(dot?: number) {
@@ -38,6 +50,8 @@ export class Production {
     }
     return this.items!;
   }
+
+  
 
 }
 
@@ -80,7 +94,7 @@ export class GItem implements IEquatable {
 
   equals(other: GItem) {
 
-    return other.production === this.production && other.dot === this.dot;
+    return other.production.equals(this.production) && other.dot === this.dot;
   };
 
 }
@@ -99,7 +113,7 @@ export class LR1Item implements IEquatable {
   }
 
   equals(other: any) {
-    return this.item.equals(other.item) && this.lookahead === other.lookahead;
+    return this.item.equals(other.item) && this.lookahead.equals(other.lookahead);
   }
 
 }

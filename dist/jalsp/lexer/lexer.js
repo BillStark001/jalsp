@@ -14,7 +14,7 @@ var PositionOptions;
 class Lexer {
     constructor({ actions, records, eofToken }) {
         var _a;
-        this.records = {};
+        this.records = [];
         this.str = undefined;
         this.pos = 0;
         this.eof = eofToken !== null && eofToken !== void 0 ? eofToken : '<<EOF>>';
@@ -23,11 +23,12 @@ class Lexer {
             if (r2.indexOf('y') < 0)
                 r2 += 'y';
             const regex = new RegExp(rec[1], r2);
-            this.records[rec[0]] = {
+            this.records.push({
+                name: rec[0],
                 pat: regex,
                 f: (_a = actions[rec[3]].h) !== null && _a !== void 0 ? _a : ID,
                 n: actions[rec[3]].n
-            };
+            });
         }
     }
     reset(str) {
@@ -57,8 +58,7 @@ class Lexer {
         else if (this.pos >= this.str.length)
             return { name: this.eof, value: this.eof, lexeme: this.eof, position: this.pos, pos: this.currentFilePosition() };
         else {
-            for (const name in this.records) {
-                const { pat, f, n } = this.records[name];
+            for (const { name, pat, f, n } of this.records) {
                 pat.lastIndex = this.pos;
                 var res;
                 if ((res = pat.exec(this.str)) != null) {

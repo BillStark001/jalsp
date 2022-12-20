@@ -77,10 +77,10 @@ function lexBnf(grammar, ebnf) {
     return ret;
 }
 exports.lexBnf = lexBnf;
-const P_NON_COMMA = /(i)( *= *)((?: *(?:i *)+\|?)*)/y;
-const P_COMMA = /(i)( *= *)((?: *(?:i *,? *)+\|?)*)/y;
+const P_NON_COMMA = /(i)( *= *)((?: *(?:i *)*\|?)*)/y;
+const P_COMMA = /(i)( *= *)((?: *(?:i *,? *)*\|?)*)/y;
 const P_SPACE = / +/y;
-function parseBnf(tokens, commaSeparate) {
+function parseBnf(tokens, commaSeparate, action) {
     var _a, _b;
     // change it to a string so we can use regex
     // discarded the DFA class because of its speed
@@ -119,7 +119,7 @@ function parseBnf(tokens, commaSeparate) {
                 parseProductionComma(res[3]) :
                 parseProductionNonComma(res[3]))
                 .map(x => x.map(y => y.map(z => { var _a, _b; return (_b = (_a = tokens[shift + z].value) !== null && _a !== void 0 ? _a : tokens[shift + z].lexeme) !== null && _b !== void 0 ? _b : '[E]'; }).join(' ')));
-            words.forEach(p => ret.push({ name: name, expr: p }));
+            words.forEach(p => ret.push({ name: name, expr: p, action: action }));
             pos = P_PROD.lastIndex;
         }
         else {

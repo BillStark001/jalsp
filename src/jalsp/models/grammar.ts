@@ -24,11 +24,10 @@ export interface EbnfElement {
   productionList: (string | EbnfElement)[][];
   mult?: number; 
 }
-
+/*
 export interface ComplexProduction {
   name: string;
   expr: (string | EbnfElement)[][];
-  action?: ProductionHandler;
 }
 
 export interface SimpleProduction {
@@ -36,15 +35,15 @@ export interface SimpleProduction {
   [1]: string[];
   [2]?: ProductionHandler;
 }
+*/
 
-
-export interface ComplexProductionCache {
+export interface ComplexProduction {
   name: string;
   expr: (string | EbnfElement)[];
-  action: number | ProductionHandlerModifier;
+  action?: number | ProductionHandlerModifier;
 }
 
-export interface SimpleProductionCache {
+export interface SimpleProduction {
   name: string;
   expr: string[];
   action?: number | ProductionHandlerModifier;
@@ -64,6 +63,7 @@ export interface GrammarDefinition {
 
   tokens: string[];
   productions: SimpleProduction[];
+  actions: (ProductionHandler | undefined)[];
   operators: OperatorDefinition[];
 
   startSymbol?: string;

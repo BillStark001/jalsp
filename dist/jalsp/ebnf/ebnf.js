@@ -19,10 +19,7 @@ exports.isEbnfList2 = isEbnfList2;
 // special cases of types
 function convertSingle(prod, getName, action) {
     var _a, _b, _c;
-    const cache = [];
-    prod.expr.forEach((expr, i) => {
-        cache.push({ name: prod.name, expr: expr, action: action });
-    });
+    const cache = [prod];
     const ret = [];
     while (cache.length > 0) {
         const current = cache.pop();
@@ -125,7 +122,7 @@ function convertSingle(prod, getName, action) {
     return ret;
 }
 // general
-function convertToBnf(unparsed) {
+function convertToBnf(unparsed, actionOverride) {
     const nonTerminals = new Set();
     const terminals = new Set();
     // first add all names
@@ -135,13 +132,11 @@ function convertToBnf(unparsed) {
         nonTerminals.add(prod.name);
     }
     for (const prod of unparsed) {
-        for (var expr of prod.expr) {
-            for (var token of expr) {
-                if (isEbnf(token))
-                    nameStack.push(token);
-                else if (!nonTerminals.has(String(token)))
-                    terminals.add(String(token));
-            }
+        for (var token of prod.expr) {
+            if (isEbnf(token))
+                nameStack.push(token);
+            else if (!nonTerminals.has(String(token)))
+                terminals.add(String(token));
         }
     }
     while (nameStack.length > 0) {
@@ -166,7 +161,7 @@ function convertToBnf(unparsed) {
     };
     for (var i = 0; i < unparsed.length; ++i) {
         const current = unparsed[i];
-        const parsed = convertSingle(current, getName, i);
+        const parsed = convertSingle(current, getName, actionOverride !== null && actionOverride !== void 0 ? actionOverride : i);
         for (var bnf of parsed) {
             var sign = JSON.stringify([bnf.name, bnf.expr]);
             if (!convertedCache.has(sign)) {

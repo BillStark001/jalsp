@@ -4,16 +4,21 @@ import * as ebnfParser from './jalsp/ebnf/ebnf_parser';
 import RegExpLexerBuilder from './jalsp/lexer/builder';
 import LRGrammarBuilder from './jalsp/parser/builder';
 
+
+import { GrammarDefinition } from './jalsp/models/grammar';
+import { TokenDefinition } from './jalsp/models/token';
+
 const lexBnf = bnf.lexBnf;
 const parseBnf = bnf.parseBnf;
 const parseEbnf = ebnfParser.default;
 const convertToBnf = ebnf.convertToBnf;
 const compileActionRecord = ebnf.compileActionRecord;
 
-const newLexer = () => new RegExpLexerBuilder();
-const newParser = () => {
-  var ret = new LRGrammarBuilder();
-  // TODO add EBNF support
+const newLexer = (lexicon?: TokenDefinition | RegExpLexerBuilder) => 
+  new RegExpLexerBuilder(lexicon);
+const newParser = (grammar?: GrammarDefinition | LRGrammarBuilder) => {
+  var ret = new LRGrammarBuilder(grammar);
+  ret.registerEbnfParser(parseEbnf);
   return ret;
 };
 
