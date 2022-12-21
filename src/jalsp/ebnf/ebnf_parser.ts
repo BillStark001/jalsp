@@ -21,7 +21,7 @@ var ebnf = new LRGrammarBuilder()
     };
     return ret;
   })
-  .bnf('elem = group MULT number', (g: string | EbnfElement | (string | EbnfElement)[], s, n): EbnfElement => {
+  .bnf('elem = elem MULT number', (g: string | EbnfElement | (string | EbnfElement)[], s, n): EbnfElement => {
     if (typeof (g) == 'string')
       return {
         isEbnf: true,
@@ -54,16 +54,13 @@ var ebnf = new LRGrammarBuilder()
       expr: h,
     }));
   })
-  .bnf('prod = ident DEFINITION', (i, _): Array<ComplexProduction> => [{name: i, expr: []}])
+  .bnf('prod = ident DEFINITION', (i, _): Array<ComplexProduction> => [{ name: i, expr: [] }])
 
   .bnf('prods = ', () => [])
   .bnf('prods = prod', (p) => [p])
   .bnf('prods = prods SEP prod', (ps, _, p) => ps.concat([p]))
   .bnf('prods = prods SEP', (ps, _) => ps)
 
-
-
-  .opr('left', 'elem')
 
   .opr('left', 'COMMA')
   .opr('left', 'MULT')

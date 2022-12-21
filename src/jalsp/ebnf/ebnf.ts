@@ -12,15 +12,15 @@ export function isEbnf(elem: string | EbnfElement) {
 }
 
 export function isEbnfList2(elem: any) {
-  return elem instanceof Array 
-    && elem[0] instanceof Array 
-    && (isEbnf(elem[0][0]) || typeof(elem[0][0]) == 'string' || elem[0][0] instanceof String);
+  return elem instanceof Array
+    && elem[0] instanceof Array
+    && (isEbnf(elem[0][0]) || typeof (elem[0][0]) == 'string' || elem[0][0] instanceof String);
 }
 
 // conversion
 
 // special cases of types
-function convertSingle(prod: ComplexProduction, getName: (init: string) => string, action: number) {
+function convertSingle(prod: ComplexProduction, getName: (init: string) => string) {
 
   const cache: ComplexProduction[] = [prod];
 
@@ -41,46 +41,46 @@ function convertSingle(prod: ComplexProduction, getName: (init: string) => strin
           newExprs.push({
             name: current.name,
             expr: preExpr.concat(postExpr),
-            action: 
-              curElem.mult === undefined ? 
-              ['epsilon', current.action, [i]] : 
-              ['merge', current.action, [i, 0]]
+            action:
+              curElem.mult === undefined ?
+                ['epsilon', current.action, [i]] :
+                ['merge', current.action, [i, 0]]
           });
 
           const mult = curElem.mult ?? 1;
           if (mult < 1)
-              continue;
+            continue;
           else
             for (var t = 1; t <= mult; ++t)
               curElem.productionList.forEach(
                 pl => newExprs.push({
                   name: current.name,
-                  expr: preExpr.concat(pl.repeat(t)).concat(postExpr), 
-                  action: 
-                    curElem.mult === undefined ? 
-                    current.action : 
-                    ['merge', current.action, [i, t]] // pos i, t times
+                  expr: preExpr.concat(pl.repeat(t)).concat(postExpr),
+                  action:
+                    curElem.mult === undefined ?
+                      current.action :
+                      ['merge', current.action, [i, t]] // pos i, t times
                 })
               );
 
         } else if (curElem.type === 'repeat') {
           // doesn't care mult
-          const dashed = getName(current.name + '_EBNF_0');
+          const dashed = getName(current.name + '_RPT_PRE_0');
           newExprs.push({
             name: dashed,
-            expr: preExpr, 
-            action: ['collect', undefined, [-1]], 
+            expr: preExpr,
+            action: ['collect', undefined, [-1]],
           });
           curElem.productionList.forEach(
             pl => newExprs.push({
               name: dashed,
-              expr: [dashed as string | EbnfElement].concat(pl), 
+              expr: [dashed as string | EbnfElement].concat(pl),
               action: ['append', undefined, [1, 1]]
             })
           );
           newExprs.push({
             name: current.name,
-            expr: [dashed as string | EbnfElement].concat(postExpr), 
+            expr: [dashed as string | EbnfElement].concat(postExpr),
             action: ['apply', current.action, [0]]
           });
         } else if (curElem.type === 'mult') {
@@ -90,31 +90,32 @@ function convertSingle(prod: ComplexProduction, getName: (init: string) => strin
           curElem.productionList.forEach(
             pl => newExprs.push({
               name: current.name,
-              expr: preExpr.concat(Array(mult).fill(pl).flat()).concat(postExpr), 
+              expr: preExpr.concat(Array(mult).fill(pl).flat()).concat(postExpr),
               action: ['merge', current.action, [i, mult]]
             })
           );
         } else if (curElem.type === 'group') {
-          var mult = curElem.mult ?? 1;
+          const mult = curElem.mult ?? 1;
+          const withMult = curElem.mult != undefined;
           if (mult < 1)
             newExprs.push({
-              name: current.name, 
-              expr: preExpr.concat(postExpr), 
-              action: ['epsilon', current.action, [i]]
+              name: current.name,
+              expr: preExpr.concat(postExpr),
+              action: ['collect', current.action, [i, 0]]
             });
           else {
             var arr = [preExpr];
             for (var i = 0; i < mult; ++i) {
               var _arr = arr
-              .map(x => curElem.productionList.map(y => x.concat(y)));
+                .map(x => curElem.productionList.map(y => x.concat(y)));
               var __arr: (string | EbnfElement)[][] = [];
               _arr.forEach(x => x.forEach(xx => __arr.push(xx)));
               arr = __arr;
             }
             for (var prod2 of arr)
               newExprs.push({
-                name: current.name, 
-                expr: prod2.concat(postExpr), 
+                name: current.name,
+                expr: prod2.concat(postExpr),
                 action: ['merge', current.action, [i, mult]]
               });
           }
@@ -164,7 +165,6 @@ export function convertToBnf(unparsed: ComplexProduction[], actionOverride?: num
       }
     }
   }
-
   // convert in order
   const converted: SimpleProduction[] = [];
   const convertedCache: Set<string> = new Set();
@@ -177,8 +177,12 @@ export function convertToBnf(unparsed: ComplexProduction[], actionOverride?: num
   };
 
   for (var i = 0; i < unparsed.length; ++i) {
-    const current = unparsed[i];
-    const parsed = convertSingle(current, getName, actionOverride ?? i);
+    const current: ComplexProduction = {
+      name: unparsed[i].name,
+      expr: unparsed[i].expr,
+      action: actionOverride ?? unparsed[i]?.action ?? i
+    }
+    const parsed = convertSingle(current, getName);
     for (var bnf of parsed) {
       var sign = JSON.stringify([bnf.name, bnf.expr]);
       if (!convertedCache.has(sign)) {
@@ -196,9 +200,9 @@ export function convertToBnf(unparsed: ComplexProduction[], actionOverride?: num
 export const identityFunc: ProductionHandler = (...args) => args;
 
 export function compileActionRecord(rec: ProductionHandlerModifier, f: (i: number) => ProductionHandler | undefined): ProductionHandler | undefined {
-  
+
   var nextFunc: ProductionHandler | undefined;
-  if (typeof(rec[1]) == 'number')
+  if (typeof (rec[1]) == 'number')
     nextFunc = f(rec[1]);
   else if (rec[1] instanceof Number)
     nextFunc = f(Number(rec[1]));
@@ -207,29 +211,31 @@ export function compileActionRecord(rec: ProductionHandlerModifier, f: (i: numbe
   else
     nextFunc = compileActionRecord(rec[1], f);
 
+  // nextFunc = (...args) => { console.log(rec[0]); return nextFunc!(...args); }
+
   var nextFunc2 = nextFunc ?? identityFunc;
-    
+
   if (rec[0] == 'epsilon') {
     var i = rec[2][0] ?? 0;
     return (...args) => nextFunc2(...(args.slice(0, i).concat([undefined]).concat(args.slice(i))));
   } else if (rec[0] == 'merge') {
     var i = rec[2][0] ?? 0;
     var t = rec[2][1] ?? 0;
-    return (...args) => nextFunc2(...(args.slice(0, i).concat([args.slice(i, t)]).concat(args.slice(i+t))));
+    return (...args) => nextFunc2(...(args.slice(0, i).concat([args.slice(i, i + t)]).concat(args.slice(i + t))));
   } else if (rec[0] == 'collect') {
     var i = rec[2][0] ?? -1; // currently useless
-    return nextFunc === undefined ? 
-      (...args) => [args, []] : 
+    return nextFunc === undefined ?
+      (...args) => [args, []] :
       (...args) => nextFunc!(args, []);
   } else if (rec[0] == 'append') {
     var i = rec[2][0] ?? 1; // currently useless
     var j = rec[2][1] ?? 1;
-    return nextFunc === undefined ? 
-      (...args) => [args[0][0], args[0][1].concat(args.slice(1))] : 
-      (...args) => nextFunc!(args[0][0], args[0][1].concat(args.slice(1)));
+    return nextFunc === undefined ?
+      (...args) => [args[0][0], args[0][1].concat([args.slice(1)])] :
+      (...args) => nextFunc!(args[0][0], args[0][1].concat([args.slice(1)]));
   } else if (rec[0] == 'apply') {
     var i = rec[2][0] ?? 0; // currently useless
-    return (pre: any[], post: any[]) => nextFunc2(...(pre.concat(post)));
+    return (pre: any[], post: any[]) => nextFunc2(...(pre[0].concat([pre[1]]).concat(post)));
   } else {
     return nextFunc;
   }

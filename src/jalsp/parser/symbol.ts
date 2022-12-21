@@ -98,7 +98,7 @@ export class EpsilonSymbol extends T {
   clone(): GSymbol {
     return this;
   }
-  
+
 }
 
 export function isTerminal(e: any) {

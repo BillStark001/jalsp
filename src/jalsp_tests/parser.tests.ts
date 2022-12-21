@@ -13,13 +13,16 @@ var lexerAmb = new RegExpLexerBuilder()
 
 
 var builderAmb = newParser()
-  .ebnf('E = E ( "+" | "-" | "*" | "/" | "%" ) E', (e, o, t) => '(' + e + o + t + ')')
-  .ebnf('ARR_LITERAL = E { "," E } [","]', (arr, _, e, __) => {
-    return arr instanceof Array ? 
-      arr.concat(e == undefined ? [] :[e]) : 
-      [arr];
+  .ebnf('E = E ( ("+" | "-") | ("*" | "/" | "%") ) E', (e, o, t) => {
+    return '(' + e + o[0][0] + t + ')'
   })
-  .ebnf('E = "[" ARR_LITERAL "]"', (_, arr, __) => {
+  .ebnf('ARR_LITERAL = E { "," E } [","]', (e: string, arr: string[][], __) => {
+    // console.log(arr);
+    return arr === undefined ?
+      [e] : 
+      [e].concat(arr.map(x => x[1]));
+  })
+  .bnf('E = "[" ARR_LITERAL "]"', (_, arr, __) => {
     return '[' + arr.join(',') + ']';
   })
   .bnf('E = int', i => String(i))

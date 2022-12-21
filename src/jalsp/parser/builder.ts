@@ -99,14 +99,14 @@ export default class LRGrammarBuilder {
   }
 
   ebnf(
-    prods: string | ComplexProduction | ComplexProduction[], 
+    prods: string | ComplexProduction | ComplexProduction[],
     handler?: ProductionHandler
   ) {
-    
+
     // normalize prod to array
     if (typeof (prods) == 'string' || prods instanceof String) {
       if (this.parseEbnf == undefined)
-      throw new ParserError('No EBNF parser is registered in this builder instance.');
+        throw new ParserError('No EBNF parser is registered in this builder instance.');
       prods = this.parseEbnf(lexBnf(prods as string, true));
     }
     // .map(x => [x.name, x.expr, undefined]);
@@ -115,7 +115,7 @@ export default class LRGrammarBuilder {
 
     const handlerIndex = this.act(handler);
     var simpleProds = convertToBnf(prods, handlerIndex);
-    this.bnfInner(simpleProds, handlerIndex);
+    this.bnfInner(simpleProds);
 
     return this;
   }

@@ -58,10 +58,10 @@ export default class Parser<T> {
       this.accept();
     else if (rec[0] == 'reduce')
       this.reduce(
-        rec[1][0] as number, 
-        rec[1][1] as number, 
+        rec[1][0] as number,
+        rec[1][1] as number,
         rec[1][2] as number
-        );
+      );
     else
       return false;
 
@@ -75,7 +75,7 @@ export default class Parser<T> {
     return new factory();
   }
   */
- 
+
   /**
    * Note: this only actually needs:
    * symbolsTable
@@ -131,7 +131,7 @@ export default class Parser<T> {
       this.error("Symbol stack is not yet initialized.");
       return;
     }
-    
+
     var rhs = this.stack.splice(-length, length);
     var t = this.stack[this.stack.length - 1];
     var ns = this.goto[t.s][head];
@@ -162,7 +162,7 @@ export default class Parser<T> {
   }
 
   error(token: Token | string) {
-    
+
     if (typeof token === 'string') {
       throw new ParserError(token);
     }

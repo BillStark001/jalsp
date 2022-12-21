@@ -51,7 +51,7 @@ export class Production implements IEquatable {
     return this.items!;
   }
 
-  
+
 
 }
 

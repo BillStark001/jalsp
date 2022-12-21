@@ -22,7 +22,7 @@ var ebnf = new builder_1.default()
     };
     return ret;
 })
-    .bnf('elem = group MULT number', (g, s, n) => {
+    .bnf('elem = elem MULT number', (g, s, n) => {
     var _a;
     if (typeof (g) == 'string')
         return {
@@ -61,7 +61,6 @@ var ebnf = new builder_1.default()
     .bnf('prods = prod', (p) => [p])
     .bnf('prods = prods SEP prod', (ps, _, p) => ps.concat([p]))
     .bnf('prods = prods SEP', (ps, _) => ps)
-    .opr('left', 'elem')
     .opr('left', 'COMMA')
     .opr('left', 'MULT')
     .opr('left', 'OR')

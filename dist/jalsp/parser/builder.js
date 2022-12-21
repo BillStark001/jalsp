@@ -80,7 +80,7 @@ class LRGrammarBuilder {
             prods = [prods];
         const handlerIndex = this.act(handler);
         var simpleProds = (0, ebnf_1.convertToBnf)(prods, handlerIndex);
-        this.bnfInner(simpleProds, handlerIndex);
+        this.bnfInner(simpleProds);
         return this;
     }
     opr(param0, ...params) {

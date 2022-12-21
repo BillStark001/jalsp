@@ -1,6 +1,7 @@
 
 
 import { lexBnf, parseBnf } from "../jalsp/ebnf/bnf";
+import { convertToBnf } from "../jalsp/ebnf/ebnf";
 import parseEbnf from '../jalsp/ebnf/ebnf_parser';
 
 const testGrammar = `
@@ -44,6 +45,12 @@ describe('Parsing BNF and EBNF syntax', () => {
     const lexRes = lexBnf(testGrammar + '= = = = = = = =', true);
     expect(() => parseEbnf(lexRes)).toThrowError();
   });
+
+  it('parses correct EBNF grammar', () => {
+    var ebnf = parseEbnf(lexBnf('E = E (E) * 2 [E] {E} * 3 | F', true));
+    var bnf = convertToBnf(ebnf);
+    expect(bnf.filter(x => x.expr.indexOf('F') >= 0).length).toBe(1);
+  })
 
 });
 
