@@ -27,7 +27,15 @@ const _1 = require(".");
 const str_1 = require("./jalsp/utils/str");
 const J = __importStar(require("./index"));
 const testGrammar = `
-A = B H { C | D | E } [ F ]
+expr = 
+  expr (
+      ADD | ADD_EQ | MINUS | MINUS_EQ | POW | POW_EQ
+    | MULT | MULT_EQ | TDIV | TDIV_EQ | DIV | DIV_EQ | MOD | MOD_EQ
+    | EQ | NEQ | LT | LT_EQ | GT | GT_EQ 
+    | ANDL | ANDB | ORL | ORB | XORL | XORB
+    | ASSGN | DEFAULT
+    | FUNC_CALL | FUNC_CALL_REV | PROP_ACCESS
+  ) expr
 `;
 var rec = (0, str_1.getLinePositions)(testGrammar);
 var tokens = (0, _1.lexBnf)(testGrammar, true);
@@ -42,7 +50,7 @@ var singleCharLexer = J.newLexer()
     .build('EOF');
 var testParser = J.newParser()
     .ebnf('G = { A ";" }', (a) => a.map((x) => x[0]))
-    .ebnf(testGrammar, (b, h, cde, f) => {
+    .ebnf('A = B H { C | D | E } [ F ]', (b, h, cde, f) => {
     console.log(b, h, cde, f);
     return b + h + (cde === null || cde === void 0 ? void 0 : cde.join('')) + (f !== null && f !== void 0 ? f : '');
 })
@@ -52,3 +60,8 @@ console.log(testParser.parse(singleCharLexer.reset('BHCCCCCCCCCCCF;BHDDDD;')));
 var ebnf = (0, _1.parseEbnf)((0, _1.lexBnf)('E = A (B) * 2 [C] {D} * 3 | F', true));
 var bnf = (0, _1.convertToBnf)(ebnf);
 console.log(bnf);
+var p = J.newParser()
+    .ebnf('conv = talker | conv texts')
+    .ebnf('texts = TEXT | texts TEXT', (t, ts) => ([t].concat(ts)).join(''));
+p.define({ mode: 'SLR' }).productions.forEach(x => console.log(x));
+p.build({ mode: 'SLR' });

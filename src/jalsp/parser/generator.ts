@@ -1,5 +1,5 @@
 import { IEquatable } from "../utils/equatable";
-import { AutomatonActionRecord, GrammarDefinition, ProductionHandler, SimpleProduction } from "../models/grammar";
+import { AutomatonActionRecord, ConflictPolicy, GrammarDefinition, OperatorDefinition, ProductionHandler, SimpleProduction } from "../models/grammar";
 import { GItem, LR1Item, Production } from "./instrument";
 import { eps, GSymbol, isNonTerminal, isTerminal, NT, T } from "./symbol";
 import '../utils/enum_extensions';
@@ -17,6 +17,13 @@ export interface ParsedGrammar {
   startState: number;
   symbols: GSymbol[];
   symbolsTable: { [name: string]: number };
+}
+
+const defaultOperatorHandler = (prod: Production, oprMap: Map<string, OperatorDefinition>) => {
+  var op = prod.body.filter(t => oprMap.has(t.name))[0];
+  if (op)
+    return oprMap.get(op.name);
+  return undefined;
 }
 
 export function printActionTable(action: { [id: number]: AutomatonActionRecord[] }) {
@@ -44,12 +51,7 @@ export default class LRGenerator {
   tokens: Set<string>;
   productions: Production[];
   actions: (ProductionHandler | undefined)[];
-  operators: {
-    [name: string]: {
-      [0]: 'nonassoc' | 'left' | 'right',
-      [1]: number
-    }
-  };
+  operators: Map<string, OperatorDefinition>;
 
   start: GSymbol;
 
@@ -75,16 +77,18 @@ export default class LRGenerator {
   statesTable: GItem[][] | LR1Item[][] = [];
   startState: number = 0;
 
-
+  conflictPolicy: ConflictPolicy;
 
   constructor(grammar: GrammarDefinition) {
-    var self = this;
+    const self = this;
 
     this.tokens = new Set(grammar.tokens);
     this.nonTerminals = [];
     this.terminals = [];
     this.moduleName = grammar.moduleName;
     this.actionMode = grammar.actionMode || 'function';
+    this.conflictPolicy = Object.assign({}, grammar.conflictPolicy);
+    this.conflictPolicy.filterer = this.conflictPolicy.filterer ?? defaultOperatorHandler;
     this.symbols = [];
     this.symbolsTable = {};
 
@@ -95,16 +99,16 @@ export default class LRGenerator {
     this.terminals.push(this.EOF);
     this.tokens.add(this.EOF.name);
 
-    this.operators = {};
+    this.operators = new Map();
 
     this.productions = [];
     this.actions = [];
     this.processProductions(grammar.productions, (i) => grammar.actions[i]);
 
     if (grammar.operators !== undefined) {
-      grammar.operators.forEach(function (opList) {
-        self.operators[opList.name] = [opList.assoc, opList.prio];
-      });
+      grammar.operators.forEach(
+        opList => self.operators.set(opList.name, Object.assign({}, opList))
+      );
     }
 
     // determine start symbol
@@ -634,12 +638,14 @@ export default class LRGenerator {
     return `${type} conflict ${cflStr} on ${sym}`;
   }
 
-  resolveConflict(currentAction: AutomatonActionRecord, newAction: AutomatonActionRecord, a: GSymbol, gItem: GItem, conflict?: GItem): AutomatonActionRecord {
+  resolveConflict(
+    currentAction: AutomatonActionRecord,
+    newAction: AutomatonActionRecord,
+    a: GSymbol, gItem: GItem, conflict?: GItem): AutomatonActionRecord {
     // if current action is reduce we have a prod, otherwise?
-    var shiftAction, reduceAction;
-    var curtype = currentAction[0];
-    var prod;
-    if (curtype === 'reduce') {
+    var shiftAction: AutomatonActionRecord, reduceAction: AutomatonActionRecord;
+    var curType = currentAction[0];
+    if (curType == 'reduce') {
       reduceAction = currentAction;
 
       if (newAction[0] == 'reduce') {
@@ -655,7 +661,7 @@ export default class LRGenerator {
       }
     } else { // current is shift
       shiftAction = currentAction;
-      if (newAction[0] === 'shift') {
+      if (newAction[0] == 'shift') {
         if (newAction[1][0] != currentAction[1][0]) {
           throw new ParserError(this.getConflictText('Shift/Shift', a, gItem, conflict), [gItem, conflict]);
         } else {
@@ -667,47 +673,45 @@ export default class LRGenerator {
       }
     }
 
-    prod = this.productions[reduceAction[1][2] as number];
+    const prod = this.productions[reduceAction[1][2] as number];
 
     // check if a is an operator
 
     const operators = this.operators;
-    if (operators && operators[a.name]) {
-      var aassoc = operators[a.name][0];
-      var aprio = operators[a.name][1];
+    if (operators && operators.has(a.name)) {
+      const aPrior = operators.get(a.name)!.prior;
       // check if prod contains an operator
-      var op = prod.body.filter(function (t) {
-        return operators[t.name]; // isTerminal(t) && 
-      })[0];
+      const op = this.conflictPolicy.filterer!(prod, operators);
 
       if (op) {
-        var redassoc = operators[op.name][0];
-        var redprio = operators[op.name][1];
+        const { assoc: redAssoc, prior: redPrior } = op as OperatorDefinition;
         // first check if it is the same priority
-        if (aprio === redprio) {
-          // check associativity
-          if (redassoc === 'nonassoc') {
-            return ['error', [`Shift/Reduce conflict: Operator ${JSON.stringify(op)} is non-associative.`]]
-          } else if (redassoc === 'left') {
-            // prefer reduce
-            return reduceAction;
-          } else {
-            // prefer shift
-            return shiftAction;
+        if (aPrior == redPrior) {
+          if (redAssoc == 'left')
+            return reduceAction; // prefer reduce
+          else if (redAssoc == 'right')
+            return shiftAction; // prefer shift
+          else { // nonassoc
+            if (this.conflictPolicy.shiftReduce == 'reduce')
+              return reduceAction;
+            else if (this.conflictPolicy.shiftReduce == 'shift')
+              return shiftAction;
+            else // not assigned
+              return ['error', [`Shift/Reduce conflict: Operator ${JSON.stringify(op)} is non-associative.`]]
           }
-        } else if (aprio > redprio) {
+        } else if (aPrior > redPrior) {
           return shiftAction;
-        } else { // aprio < redprio
+        } else { // aPrior < redPrior
           return reduceAction;
         }
       }
-      else {
-
-      }
-
     } else {
-      // a is not an operator
+      if (this.conflictPolicy.shiftReduce == 'reduce')
+        return reduceAction;
+      else if (this.conflictPolicy.shiftReduce == 'shift')
+        return shiftAction;
     }
+    // a is not an operator
     throw new ParserError(this.getConflictText('Shift/Reduce', a, gItem, conflict), [gItem, conflict])
   }
 

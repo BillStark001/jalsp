@@ -1,3 +1,4 @@
+import { Production } from "../parser/instrument";
 import { GSymbol } from "../parser/symbol";
 
 export type ProductionHandler = (...args: any[]) => (any | undefined);
@@ -16,13 +17,13 @@ export interface ProductionHandlerModifier {
 
 export interface EbnfElement {
   isEbnf: true;
-  type: 
-  'optional' | 
-  'repeat' | 
-  'group' | 
+  type:
+  'optional' |
+  'repeat' |
+  'group' |
   'mult'; // string literal with a mult sign
   productionList: (string | EbnfElement)[][];
-  mult?: number; 
+  mult?: number;
 }
 /*
 export interface ComplexProduction {
@@ -53,7 +54,14 @@ export interface SimpleProduction {
 export interface OperatorDefinition {
   name: string;
   assoc: 'nonassoc' | 'left' | 'right';
-  prio: number;
+  prior: number;
+}
+
+export interface ConflictPolicy {
+  shiftReduce?: 'reduce' | 'shift' | 'error';
+  reduceReduce?: 'existing' | 'new' | 'error';
+  shiftShift?: 'existing' | 'new' | 'error';
+  filterer?: (prod: Production, oprSet: Map<string, OperatorDefinition>) => OperatorDefinition | undefined;
 }
 
 export interface GrammarDefinition {
@@ -69,10 +77,12 @@ export interface GrammarDefinition {
   startSymbol?: string;
   eofToken?: string;
 
+  // conflict policy
+  conflictPolicy?: ConflictPolicy;
 }
 
 export interface AutomatonActionRecord {
-  [0]: 'reduce' | 'accept' | 'shift' | 'error', 
+  [0]: 'reduce' | 'accept' | 'shift' | 'error',
   [1]: (number | string)[],
 }
 
